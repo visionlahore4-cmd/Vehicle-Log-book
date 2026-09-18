@@ -1,0 +1,2088 @@
+<!DOCTYPE html>
+<html lang="ur" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Vehicle Log Book & Fleet Management</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1e3a5f;
+      --primary-accent: #2563eb;
+      --sidebar-bg: #0f172a;
+      --sidebar-hover: #1e293b;
+      --sidebar-active: #2563eb;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --bg-body: #e8edf5;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+    }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: linear-gradient(160deg, #dce7f5 0%, #eef2f9 40%, #e4ecf7 70%, #d8e6f2 100%); background-attachment: fixed; color: var(--text-main); min-height: 100vh; display: flex; }
+    .sidebar { width: 270px; background: var(--sidebar-bg); color: #f8fafc; display: flex; flex-direction: column; flex-shrink: 0; min-height: 100vh; box-shadow: 4px 0 16px rgba(0,0,0,0.15); position: sticky; top: 0; z-index: 100; transition: all 0.3s ease; }
+    .sidebar-brand { padding: 22px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); background: rgba(0,0,0,0.25); }
+    .brand-icon { width: 44px; height: 44px; background: linear-gradient(135deg, #2563eb, #38bdf8); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; box-shadow: 0 4px 10px rgba(37,99,235,0.3); }
+    .brand-title { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.5px; line-height: 1.2; }
+    .brand-sub { font-size: 0.72rem; color: #94a3b8; }
+    .sidebar-menu { padding: 16px 12px; flex: 1; display: flex; flex-direction: column; gap: 5px; }
+    .menu-heading { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: #64748b; padding: 10px 12px 4px; font-weight: 700; }
+    .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; color: #cbd5e1; text-decoration: none; font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; user-select: none; }
+    .nav-item:hover { background: var(--sidebar-hover); color: #fff; }
+    .nav-item.active { background: var(--sidebar-active); color: #fff; font-weight: 600; box-shadow: 0 4px 12px rgba(37,99,235,0.35); }
+    .nav-item .icon { font-size: 1.25rem; width: 24px; text-align: center; }
+    .nav-badge { margin-left: auto; font-size: 0.75rem; padding: 2px 8px; border-radius: 20px; background: rgba(255,255,255,0.15); color: #fff; }
+    .sidebar-footer { padding: 16px; background: rgba(0,0,0,0.3); border-top: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px; }
+    .sidebar-btn { width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.06); color: #f8fafc; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; }
+    .sidebar-btn:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
+    .sidebar-btn.btn-excel { background: linear-gradient(135deg, #107c41, #15803d); border-color: #16a34a; box-shadow: 0 3px 10px rgba(16,124,65,0.3); font-weight: 700; }
+    .sidebar-btn.btn-excel:hover { background: #15803d; box-shadow: 0 4px 14px rgba(16,124,65,0.45); }
+
+    /* Company Banner */
+    .company-banner { background: linear-gradient(90deg, #0f172a 0%, #1e3a5f 45%, #1e40af 100%); padding: 14px 28px; display: flex; align-items: center; position: sticky; top: 0; z-index: 95; box-shadow: 0 4px 20px rgba(15,23,42,0.35); border-bottom: 3px solid #fbbf24; }
+    .company-banner-inner { display: flex; align-items: center; gap: 18px; }
+    .company-logo { flex-shrink: 0; filter: drop-shadow(0 4px 10px rgba(37,99,235,0.5)); }
+    .company-info { display: flex; flex-direction: column; gap: 2px; }
+    .company-name { font-size: 1.45rem; font-weight: 800; color: #ffffff; letter-spacing: 0.6px; line-height: 1.2; text-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+    .company-tagline { font-size: 0.76rem; color: #fbbf24; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+
+﻿    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-y: auto; }
+    .top-navbar { background: #ffffff; border-bottom: 1px solid var(--border-color); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 90; }
+    .top-title h2 { font-size: 1.25rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .top-title span { font-size: 0.8rem; color: var(--text-muted); font-weight: normal; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .content-area { padding: 24px 28px 60px; max-width: 1600px; width: 100%; margin: 0 auto; }
+    .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 22px; }
+    .stat-card { background: var(--card-bg); border-radius: 12px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border-color); border-left: 4px solid var(--primary-accent); position: relative; overflow: hidden; }
+    .stat-card.stat-green { border-left-color: #10b981; }
+    .stat-card.stat-amber { border-left-color: #f59e0b; }
+    .stat-card.stat-purple { border-left-color: #8b5cf6; }
+    .stat-card .label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .stat-card .value { font-size: 1.55rem; font-weight: 700; color: var(--primary); margin-top: 4px; }
+    .card { background: var(--card-bg); border-radius: 14px; border: 1px solid var(--border-color); box-shadow: 0 2px 10px rgba(0,0,0,0.04); margin-bottom: 24px; overflow: hidden; }
+    .card-header { padding: 16px 22px; background: #fafbfc; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; }
+    .card-header h3 { font-size: 1.02rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 22px 22px; }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 0.74rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.4px; }
+    .form-group input, .form-group textarea, .form-group select { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 8px 11px; font-size: 0.88rem; color: var(--text-main); background: #f8fafc; transition: all 0.2s; outline: none; width: 100%; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--primary-accent); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); background: #fff; }
+    .form-group textarea { resize: vertical; min-height: 55px; }
+    .km-display { background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 8px; padding: 8px 11px; font-size: 0.95rem; font-weight: 700; color: #1d4ed8; display: flex; align-items: center; }
+    .full-row { grid-column: 1 / -1; }
+    .btn-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+    .btn { padding: 9px 20px; border-radius: 8px; border: none; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-outline { background: #fff; color: #2563eb; border: 1.5px solid #2563eb; }
+    .btn-outline:hover { background: #eff6ff; }
+    .btn-success { background: #107c41; color: #fff; }
+    .btn-success:hover { background: #0b6132; }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-secondary { background: #475569; color: #fff; }
+    .btn-secondary:hover { background: #334155; }
+
+﻿    .table-toolbar { padding: 14px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; background: #fff; border-bottom: 1px solid var(--border-color); }
+    .filter-badge { font-size: 0.82rem; font-weight: 600; padding: 4px 10px; border-radius: 6px; background: #e0f2fe; color: #0369a1; display: inline-flex; align-items: center; gap: 6px; }
+    .search-box { border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 7px 12px; font-size: 0.86rem; width: 240px; background: #f8fafc; outline: none; margin-left: auto; }
+    .search-box:focus { border-color: var(--primary-accent); background: #fff; }
+    .table-wrap { overflow-x: auto; background: #fff; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    thead tr { background: #1e3a5f; color: #fff; }
+    thead th { padding: 11px 8px; text-align: left; white-space: nowrap; font-weight: 600; letter-spacing: 0.3px; }
+    tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+    tbody tr:hover { background: #f8fafc; }
+    tbody tr:nth-child(even) { background: #fbfcfe; }
+    tbody tr:nth-child(even):hover { background: #f1f5f9; }
+    td { padding: 8px 8px; vertical-align: middle; white-space: nowrap; }
+    td.km-cell { color: #2563eb; font-weight: 700; }
+    td.place-cell { white-space: normal; max-width: 160px; }
+    td.remark-cell { white-space: normal; max-width: 130px; font-size: 0.76rem; color: #64748b; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-amber { background: #fef3c7; color: #b45309; }
+    .badge-purple { background: #ede9fe; color: #6d28d9; }
+    .del-btn { background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1rem; padding: 3px 6px; border-radius: 5px; transition: background 0.15s; }
+    .del-btn:hover { background: #fee2e2; }
+    .edit-btn { background: none; border: none; cursor: pointer; color: #2563eb; font-size: 1rem; padding: 3px 6px; border-radius: 5px; transition: background 0.15s; }
+    .edit-btn:hover { background: #dbeafe; }
+    .quick-check-btn { background: #eff6ff; border: 1.5px solid #bfdbfe; color: #1d4ed8; font-size: 0.75rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 4px; }
+    .quick-check-btn:hover { background: #2563eb; border-color: #2563eb; color: #ffffff; transform: translateY(-1px); box-shadow: 0 2px 6px rgba(37,99,235,0.25); }
+    .quick-check-btn:active { transform: scale(0.97); }
+    .empty-state { text-align: center; padding: 50px 20px; color: #94a3b8; }
+    .empty-state .icon { font-size: 2.8rem; margin-bottom: 8px; }
+    #restore-file-input { display: none; }
+    @media print {
+      @page { size: A4 landscape; margin: 8mm 10mm; }
+      body { background: #fff !important; color: #000 !important; font-size: 8pt; display: block; }
+      .sidebar, .top-navbar, .company-banner, .form-card, .stats-bar, .btn-row, .search-box, .del-btn, .table-toolbar, .no-print, #fleet-registry-card { display: none !important; }
+      .main-wrapper { overflow: visible; }
+      .content-area { padding: 0 !important; max-width: 100% !important; }
+      .card { border: none !important; box-shadow: none !important; }
+      .print-header { display: block !important; margin-bottom: 10px; border-bottom: 2px solid #1e3a5f; padding-bottom: 5px; }
+      .print-header h1 { font-size: 13pt; color: #1e3a5f; margin: 0; }
+      .print-header p { font-size: 8pt; color: #555; margin-top: 2px; }
+      .table-wrap { overflow: visible !important; }
+      table { font-size: 7.5pt !important; width: 100% !important; border-collapse: collapse; }
+      thead tr { background: #1e3a5f !important; color: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      thead th { padding: 5px 4px !important; color: #fff !important; border: 1px solid #334155; }
+      td { padding: 4px 4px !important; border: 1px solid #cbd5e1 !important; white-space: normal !important; }
+      td.km-cell { color: #000 !important; font-weight: bold !important; }
+      .badge { border: 1px solid #94a3b8; padding: 1px 4px; }
+      tfoot tr { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+    .print-header { display: none; }
+    @media (max-width: 900px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; min-height: auto; position: static; }
+      .sidebar-menu { flex-direction: row; flex-wrap: wrap; }
+      .nav-item { flex: 1; min-width: 140px; }
+    }
+  </style>
+</head>
+<body>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">&#x1F697;</div>
+    <div>
+      <div class="brand-title">LogBook Pro</div>
+      <div class="brand-sub">Fleet &amp; Mileage System</div>
+    </div>
+  </div>
+  <nav class="sidebar-menu">
+    <div class="nav-item" id="nav-entry" onclick="showEntryForm()">
+      <span class="icon">&#x270D;&#xFE0F;</span>
+      <span>Entry</span>
+    </div>
+
+    <div class="menu-heading" style="margin-top: 6px;">Departments &amp; Log</div>
+    <div class="nav-item active" id="nav-all" onclick="filterDepartment('ALL')">
+      <span class="icon">&#x1F3E2;</span>
+      <span>All Records</span>
+      <span class="nav-badge" id="badge-all">0</span>
+    </div>
+    <div class="nav-item" id="nav-sales" onclick="filterDepartment('SALE')">
+      <span class="icon">&#x1F4BC;</span>
+      <span>Sale Dept</span>
+      <span class="nav-badge" id="badge-sales">0</span>
+    </div>
+    <div class="nav-item" id="nav-admin" onclick="filterDepartment('ADMIN')">
+      <span class="icon">&#x1F3DB;</span>
+      <span>Admin Dept</span>
+      <span class="nav-badge" id="badge-admin">0</span>
+    </div>
+    <div class="nav-item" id="nav-loading" onclick="filterDepartment('LOADING')">
+      <span class="icon">&#x1F69B;</span>
+      <span>Loading Vehicles</span>
+      <span class="nav-badge" id="badge-loading">0</span>
+    </div>
+    <div class="menu-heading" style="margin-top: 6px;">Fleet Directory</div>
+    <div class="nav-item" id="nav-fleet" onclick="showFleetModal()">
+      <span class="icon">&#x1F4CB;</span>
+      <span id="fleet-nav-label">Vehicle Registry (11)</span>
+    </div>
+    <div class="menu-heading" style="margin-top: 6px;">Reports</div>
+    <div class="nav-item" id="nav-date-report" onclick="showDateReport()">
+      <span class="icon">&#x1F4C5;</span>
+      <span>Date-wise Report</span>
+    </div>
+    <div class="nav-item" id="nav-monthly-report" onclick="showMonthlyReport()">
+      <span class="icon">&#x1F4CA;</span>
+      <span>Monthly Report</span>
+    </div>
+    <div class="menu-heading" style="margin-top: 6px;">Driver Management</div>
+    <div class="nav-item" id="nav-drivers-toggle" onclick="toggleDriversList()" style="justify-content: space-between;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span class="icon">&#x1F464;</span>
+        <span id="drivers-toggle-label">Drivers</span>
+      </div>
+      <span id="drivers-arrow" style="font-size:0.72rem; color:#94a3b8;">&#x25BC;</span>
+    </div>
+    <div id="driver-nav-list" style="display: none; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.12); margin-left: 14px; margin-top: 4px;">
+      <div class="nav-item" id="nav-driver-all" onclick="filterByDriver('ALL')">
+        <span class="icon">&#x1F465;</span>
+        <span>All Drivers</span>
+      </div>
+      <div class="nav-item" id="nav-add-driver" onclick="showAddDriverForm()" style="color:#fbbf24; border:1px dashed rgba(251,191,36,0.35);">
+        <span class="icon">&#x2795;</span>
+        <span>Add Driver</span>
+      </div>
+      <!-- Auto-populated by JS -->
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <button class="sidebar-btn" id="btn-settings-toggle" onclick="toggleSettingsMenu()" style="justify-content: space-between; background: rgba(255,255,255,0.1); font-weight:700;">
+      <span style="display:flex; align-items:center; gap:8px;">
+        <span>&#x2699;&#xFE0F;</span> Settings
+      </span>
+      <span id="settings-arrow" style="font-size:0.72rem; color:#94a3b8;">&#x25BC;</span>
+    </button>
+    <div id="settings-menu" style="display:none; flex-direction:column; gap:8px; margin-top:8px;">
+      <button class="sidebar-btn btn-excel" onclick="exportToExcel()">
+        <span>&#x1F4CA;</span> Excel Backup (.xlsx)
+      </button>
+      <button class="sidebar-btn" onclick="exportToCSV()">
+        <span>&#x1F4BE;</span> CSV Export (.csv)
+      </button>
+      <button class="sidebar-btn" onclick="backupJSON()">
+        <span>&#x1F4E6;</span> Full System Backup
+      </button>
+      <button class="sidebar-btn" onclick="document.getElementById('restore-file-input').click()">
+        <span>&#x1F4E5;</span> Restore Backup
+      </button>
+      <input type="file" id="restore-file-input" accept=".json,.csv" onchange="restoreBackup(event)" />
+    </div>
+  </div>
+</aside>
+
+<div class="main-wrapper">
+  <!-- COMPANY HEADER BANNER -->
+  <div class="company-banner">
+    <div class="company-banner-inner">
+      <div class="company-logo">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="56" height="56" rx="14" fill="url(#logoGrad)"/>
+          <!-- Box / Packaging -->
+          <rect x="13" y="26" width="30" height="20" rx="2" fill="white" fill-opacity="0.9"/>
+          <path d="M13 28l15-10 15 10" stroke="white" stroke-width="2.2" stroke-linejoin="round" fill="none"/>
+          <!-- Fork -->
+          <line x1="28" y1="10" x2="28" y2="24" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+          <line x1="24" y1="10" x2="24" y2="17" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+          <line x1="32" y1="10" x2="32" y2="17" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+          <path d="M24 17 Q28 21 32 17" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round"/>
+          <!-- Star accent -->
+          <circle cx="42" cy="13" r="3.5" fill="#fbbf24"/>
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="56" y2="56">
+              <stop offset="0%" stop-color="#1e3a5f"/>
+              <stop offset="100%" stop-color="#2563eb"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="company-info">
+        <div class="company-name">Vision Food &amp; Packaging Lahore</div>
+        <div class="company-tagline">Fleet Management &amp; Vehicle Log System</div>
+      </div>
+    </div>
+  </div>
+  <header class="top-navbar">
+    <div class="top-title">
+      <h2 id="current-view-title">&#x1F3E2; All Vehicles Log</h2>
+      <span id="current-view-sub" style="display:none;"></span>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-outline" onclick="window.print()">
+        &#x1F5A8; Print Landscape (A4)
+      </button>
+    </div>
+  </header>
+  <div class="content-area">
+    <div class="print-header">
+      <h1 id="print-title">Vehicle Log Book - Official Record</h1>
+      <p>Generated on: <span id="print-date"></span> | Department: <span id="print-dept">All Departments</span></p>
+    </div>
+    <div class="stats-bar">
+      <div class="stat-card"><div class="label">Total Trips / Entries</div><div class="value" id="stat-entries">0</div></div>
+      <div class="stat-card stat-green"><div class="label">Total KM Driven</div><div class="value" id="stat-km">0 km</div></div>
+      <div class="stat-card stat-amber"><div class="label">Active Drivers</div><div class="value" id="stat-drivers">0</div></div>
+      <div class="stat-card stat-purple"><div class="label">Active Vehicles</div><div class="value" id="stat-vehicles">0</div></div>
+    </div>
+    <!-- ADD DRIVER FORM CARD (shown when Add Driver is clicked) -->
+    <div class="card form-card" id="add-driver-form-card" style="display:none;">
+      <div class="card-header" style="background:linear-gradient(90deg,#0f172a,#1e3a5f); color:#fff;">
+        <h3 style="color:#fff;">&#x1F464; Add Company Driver</h3>
+        <button onclick="hideAddDriverForm()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;padding:5px 12px;border-radius:8px;cursor:pointer;font-size:0.9rem;">&#x2715; Close</button>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>&#x1F3F7; Driver Type *</label>
+            <select id="dr-type">
+              <option value="Company Driver">Company Driver</option>
+              <option value="Contract Driver">Contract Driver</option>
+              <option value="Temporary Driver">Temporary Driver</option>
+              <option value="Owner Driver">Owner Driver</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>&#x1F194; Employee ID *</label>
+            <input type="text" id="dr-emp-id" placeholder="e.g. EMP-101" />
+          </div>
+          <div class="form-group">
+            <label>&#x1F9D1; Full Name *</label>
+            <input type="text" id="dr-name" placeholder="e.g. Ali Hassan" />
+          </div>
+          <div class="form-group">
+            <label>&#x1F4DE; Phone *</label>
+            <input type="tel" id="dr-phone" placeholder="e.g. 0300-1234567" />
+          </div>
+          <div class="form-group">
+            <label>&#x1F4C4; License No. *</label>
+            <input type="text" id="dr-license" placeholder="e.g. LHR-12345" />
+          </div>
+          <div class="form-group">
+            <label>&#x1F4C5; License Expiry</label>
+            <input type="date" id="dr-expiry" />
+          </div>
+          <div class="form-group full-row">
+            <label>&#x1F4CD; Address</label>
+            <input type="text" id="dr-address" placeholder="e.g. Lahore, Punjab" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveDriver()">&#x1F4BE; Save Driver</button>
+          <button class="btn btn-outline" onclick="hideAddDriverForm()">Cancel</button>
+        </div>
+        <!-- Saved Drivers List -->
+        <div id="saved-drivers-list" style="margin-top:24px;"></div>
+      </div>
+    </div>
+
+    <!-- ENTRY FORM CARD (Only shown when Entry option is selected) -->
+    <div class="card form-card" id="main-entry-form-card" style="display: none;">
+
+      <div class="card-header">
+        <h3>&#x270D;&#xFE0F; Nayi Entry Darj Karen (Vehicle Entry Form)</h3>
+        <span style="font-size: 0.8rem; color: #64748b;">Tamam zaroori khanay pur karen</span>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>&#x1F3E2; Department</label>
+            <select id="f-dept">
+              <option value="SALE">Sale Dept (سیلز ڈیپارٹمنٹ)</option>
+              <option value="ADMIN">Admin Dept (ایڈمن ڈیپارٹمنٹ)</option>
+              <option value="LOADING">Loading Vehicles (لوڈنگ گاڑیاں)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>&#x1F4C5; Date</label><input type="date" id="f-date" /></div>
+          <div class="form-group"><label>&#x1F550; Time Out (Niklay)</label><input type="time" id="f-time-out" /></div>
+          <div class="form-group"><label>&#x1F554; Time In (Wapis Aay)</label><input type="time" id="f-time-in" /></div>
+          <div class="form-group"><label>&#x1F4CD; Khan Per Giy Thy (Place Visited)</label><input type="text" id="f-place" placeholder="e.g. City Office, Godown..." /></div>
+          <div class="form-group"><label>&#x1F3AF; Purpose of Journey</label><input type="text" id="f-purpose" placeholder="e.g. Supply delivery, Meeting..." /></div>
+          <div class="form-group"><label>&#x1F522; Out Meter (Departure KM)</label><input type="number" id="f-meter-out" placeholder="e.g. 25400" min="0" oninput="calcKm()" /></div>
+          <div class="form-group"><label>&#x1F522; In Meter (Return KM)</label><input type="number" id="f-meter-in" placeholder="e.g. 25650" min="0" oninput="calcKm()" /></div>
+          <div class="form-group"><label>&#x1F4CA; Kitna KM Chala (Auto)</label><div class="km-display" id="km-result">-- km</div></div>
+          <div class="form-group">
+            <label>&#x1F464; Driver Name</label>
+            <div style="display: flex; gap: 6px; margin-bottom: 5px;">
+              <select id="f-driver-select" onchange="onDriverSelect()" style="flex: 1;">
+                <option value="">-- Driver Muntakhib Karen --</option>
+              </select>
+              <button type="button" class="btn btn-outline" style="padding: 4px 8px; font-size: 0.78rem;" onclick="showAddDriverForm()" title="Naya Driver Add Karen">&#x2795; Naya</button>
+            </div>
+            <input type="text" id="f-driver" placeholder="Driver ka naam likhein ya upar se select karen..." />
+          </div>
+          <div class="form-group">
+            <label>&#x1F697; Select Vehicle</label>
+            <select id="f-vehicle-select" onchange="onVehicleSelect()">
+              <option value="">-- Gaari Muntakhib Karen --</option>
+              <optgroup label="Sale Department Vehicles">
+                <option value="ARQ-526|Suzuki Wagon-R|24|SALE">ARQ-526 &mdash; Suzuki / Wagon-R (Code 24)</option>
+                <option value="ARQ-334|Suzuki Wagon-R|24|SALE">ARQ-334 &mdash; Suzuki / Wagon-R (Code 24)</option>
+              </optgroup>
+              <optgroup label="Admin Department Vehicles">
+                <option value="LEA-6860|Toyota GLI|16A|ADMIN">LEA-6860 &mdash; Toyota / GLI (Code 16A)</option>
+                <option value="LEB-5449|Toyota Yaris|20|ADMIN">LEB-5449 &mdash; Toyota / Yaris (Code 20)</option>
+                <option value="LE-3153|Toyota Vitz|17|ADMIN">LE-3153 &mdash; Toyota / Vitz (Code 17)</option>
+                <option value="AFS-612|Suzuki Bolan|21|ADMIN">AFS-612 &mdash; Suzuki / Bolan (Code 21)</option>
+                <option value="BPR-980|Changan Carwan|26|ADMIN">BPR-980 &mdash; Changan / Carwan (Code 26)</option>
+              </optgroup>
+              <optgroup label="Loading Vehicles Department">
+                <option value="CAJ-6701|Suzuki Ravi|22|LOADING">CAJ-6701 &mdash; Suzuki / Ravi (Code 22)</option>
+                <option value="CAV-8213|Hyundai Porter|25|LOADING">CAV-8213 &mdash; Hyundai / Porter (Code 25)</option>
+                <option value="CAF-4893|Hyundai Porter|21|LOADING">CAF-4893 &mdash; Hyundai / Porter (Code 21)</option>
+                <option value="LES-4605|Hino / AVX-481 Everyduba|19|LOADING">LES-4605 &mdash; Hino / AVX-481 Everyduba (Code 19)</option>
+              </optgroup>
+              <option value="OTHER|Other Vehicle||OTHER">Other (Manual Input)</option>
+            </select>
+          </div>
+          <div class="form-group"><label>&#x1F4CB; Vehicle No.</label><input type="text" id="f-vehicle" placeholder="Auto-filled or write manual..." /></div>
+          <div class="form-group full-row">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+              <label style="margin: 0;">&#x1F4DD; Remarks / Checked By</label>
+              <div style="display: flex; align-items: center; gap: 5px; flex-wrap: wrap;">
+                <span style="font-size: 0.7rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Quick Select:</span>
+                <button type="button" class="quick-check-btn" onclick="setQuickRemark('Check by Rabbani sb')">&#x2714;&#xFE0F; Rabbani sb</button>
+                <button type="button" class="quick-check-btn" onclick="setQuickRemark('Check by Azam')">&#x2714;&#xFE0F; Azam</button>
+                <button type="button" class="quick-check-btn" onclick="setQuickRemark('Check by Akbar')">&#x2714;&#xFE0F; Akbar</button>
+                <button type="button" class="quick-check-btn" onclick="setQuickRemark('Check by Khalid')">&#x2714;&#xFE0F; Khalid</button>
+                <button type="button" class="quick-check-btn" onclick="setQuickRemark('Check by Umer Hayat')">&#x2714;&#xFE0F; Umer Hayat</button>
+                <select id="quick-remark-dropdown" onchange="if(this.value){ setQuickRemark(this.value); this.value=''; }" style="padding: 3px 6px; font-size: 0.74rem; border-radius: 6px; border: 1.5px solid #cbd5e1; background: #fff; cursor: pointer; color: #1e3a5f; font-weight: 600;">
+                  <option value="">-- More --</option>
+                  <option value="Check by Rabbani sb">Check by Rabbani sb</option>
+                  <option value="Check by Azam">Check by Azam</option>
+                  <option value="Check by Akbar">Check by Akbar</option>
+                  <option value="Check by Khalid">Check by Khalid</option>
+                  <option value="Check by Umer Hayat">Check by Umer Hayat</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Official Duty">Official Duty</option>
+                  <option value="Personal / Staff">Personal / Staff</option>
+                </select>
+              </div>
+            </div>
+            <textarea id="f-remark" placeholder="Koi khas baat ya note ho to yahan likhein..."></textarea>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="btn-save-entry" onclick="addEntry()">&#x1F4BE; Entry Save Karen</button>
+          <button class="btn btn-outline" onclick="clearForm()">&#x1F504; Form Clear</button>
+          <button class="btn btn-success" onclick="exportToExcel()">&#x1F4CA; Excel Sheet Backup</button>
+          <button class="btn btn-secondary" onclick="window.print()">&#x1F5A8; Print Landscape (A4)</button>
+          <button class="btn btn-danger" onclick="clearAll()" style="margin-left: auto;">&#x1F5D1; Sab Delete Karen</button>
+        </div>
+      </div>
+    </div>
+
+﻿    <!-- LOG TABLE CARD -->
+    <div class="card table-card">
+      <div class="table-toolbar">
+        <span id="active-filter-badge" style="display:none;"></span>
+        <input class="search-box" type="text" id="search-box" placeholder="Search by vehicle, place, driver..." oninput="renderTable()" style="margin-left:auto;" />
+      </div>
+      <div class="table-wrap">
+        <table id="log-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Department</th>
+              <th>Date</th>
+              <th>Time Out</th>
+              <th>Time In</th>
+              <th>Place Visited</th>
+              <th>Purpose</th>
+              <th>Out Meter</th>
+              <th>In Meter</th>
+              <th>KM Chala</th>
+              <th>Driver Name</th>
+              <th>Vehicle No.</th>
+              <th>Remarks</th>
+              <th class="no-print" style="text-align:center;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="log-body"></tbody>
+          <tfoot id="log-foot"></tfoot>
+        </table>
+        <div class="empty-state" id="empty-state" style="display:none;">
+          <div class="icon">&#x1F4CB;</div>
+          <p>Is department mein abhi tak koi entry nahi hai.<br/>Upar form bhar ke entry add karen ya sidebar se doosra department select karen.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLEET REGISTRY (Only shown when Vehicle Registry is clicked) -->
+    <div class="card" id="fleet-registry-card" style="display: none;">
+      <div class="card-header" style="background: linear-gradient(90deg, #0f172a, #1e3a5f); color: #fff; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <h3 style="color:#fff; display:flex; align-items:center; gap:8px;">&#x1F697; Fleet Registry &amp; Department Allocation</h3>
+          <span style="font-size: 0.8rem; color: #94a3b8;">Total Registered Vehicles: <strong id="fleet-total-count" style="color:#fbbf24;">11</strong></span>
+        </div>
+        <button class="btn btn-primary" id="btn-toggle-veh-form" onclick="toggleVehicleForm()" style="background:#2563eb;">
+          &#x2795; Add / Edit Vehicle
+        </button>
+      </div>
+
+      <!-- ADD / EDIT VEHICLE FORM -->
+      <div id="vehicle-form-box" style="display:none; background:#f8fafc; border-bottom:2px solid #cbd5e1; padding:20px 24px;">
+        <h4 id="vh-form-title" style="color:#1e3a5f; margin-bottom:14px; font-size:1rem; font-weight:700;">&#x2795; Nayi Vehicle Add Karen (Add New Fleet Vehicle)</h4>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>&#x1F697; Vehicle Number *</label>
+            <input type="text" id="vh-number" placeholder="e.g. ARQ-526" />
+          </div>
+          <div class="form-group">
+            <label>&#x1F3E2; Department *</label>
+            <select id="vh-dept">
+              <option value="SALE">Sale Dept (سیلز ڈیپارٹمنٹ)</option>
+              <option value="ADMIN">Admin Dept (ایڈمن ڈیپارٹمنٹ)</option>
+              <option value="LOADING">Loading Vehicles (لوڈنگ گاڑیاں)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>🔢 Vehicle Code</label>
+            <input type="text" id="vh-code" placeholder="e.g. 24, 16A, 20" />
+          </div>
+          <div class="form-group">
+            <label>🚘 Make / Model *</label>
+            <input type="text" id="vh-model" placeholder="e.g. Suzuki / Wagon-R" />
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn btn-primary" id="vh-save-btn" onclick="saveVehicle()">&#x1F4BE; Save Vehicle</button>
+          <button class="btn btn-outline" onclick="cancelVehicleForm()">Cancel</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Vehicle No.</th><th>Department</th><th>Code</th><th>Make / Model</th><th>Action</th></tr>
+          </thead>
+          <tbody id="fleet-registry-tbody">
+            <!-- Populated dynamically by renderFleetRegistryTable() -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+﻿<script>
+  var STORE_KEY = 'vehicle_logbook_v3';
+  var currentDeptFilter = 'ALL';
+  var currentDriverFilter = 'ALL';
+
+
+  (function migrate() {
+    if (!localStorage.getItem(STORE_KEY)) {
+      var old = localStorage.getItem('vehicle_logbook_v2') || localStorage.getItem('vehicle_logbook_v1');
+      if (old) {
+        try {
+          var arr = JSON.parse(old);
+          arr = arr.map(function(item) {
+            if (!item.dept) {
+              var v = (item.vehicle || '').toUpperCase();
+              if (v.indexOf('CAJ') !== -1 || v.indexOf('CAV') !== -1 || v.indexOf('CAF') !== -1 || v.indexOf('LES') !== -1) {
+                item.dept = 'LOADING';
+              } else if (v.indexOf('ARQ') !== -1) {
+                item.dept = 'SALE';
+              } else {
+                item.dept = 'ADMIN';
+              }
+            }
+            return item;
+          });
+          localStorage.setItem(STORE_KEY, JSON.stringify(arr));
+        } catch(e) {}
+      }
+    }
+  })();
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+    catch(e) { return []; }
+  }
+  function save(data) { localStorage.setItem(STORE_KEY, JSON.stringify(data)); }
+
+  (function setDefaults() {
+    var today = new Date().toISOString().split('T')[0];
+    var fDate = document.getElementById('f-date');
+    if (fDate) fDate.value = today;
+    var pDate = document.getElementById('print-date');
+    if (pDate) pDate.textContent = new Date().toLocaleDateString('en-GB');
+  })();
+
+  // SHOW ENTRY FORM (from sidebar)
+  function showEntryForm() {
+    ['all', 'sales', 'admin', 'loading', 'entry'].forEach(function(id) {
+      var el = document.getElementById('nav-' + id);
+      if (el) el.classList.remove('active');
+    });
+    var fleetNav = document.getElementById('nav-fleet');
+    if (fleetNav) fleetNav.classList.remove('active');
+    clearDriverNavActive();
+    var addDr = document.getElementById('nav-add-driver');
+    if (addDr) addDr.classList.remove('active');
+
+    var entryNav = document.getElementById('nav-entry');
+    if (entryNav) entryNav.classList.add('active');
+
+    // Hide fleet card, driver form, report cards
+    var fleetCard = document.getElementById('fleet-registry-card');
+    if (fleetCard) fleetCard.style.display = 'none';
+    var driverCard = document.getElementById('add-driver-form-card');
+    if (driverCard) driverCard.style.display = 'none';
+    var dateRpt = document.getElementById('date-report-card');
+    if (dateRpt) dateRpt.style.display = 'none';
+    var monthRpt = document.getElementById('monthly-report-card');
+    if (monthRpt) monthRpt.style.display = 'none';
+    var todayCard = document.getElementById('today-summary-card');
+    if (todayCard) todayCard.style.display = 'none';
+
+    // Show form card
+    var formEl = document.getElementById('main-entry-form-card');
+    if (formEl) {
+      formEl.style.display = 'block';
+      formEl.scrollIntoView({ behavior: 'smooth' });
+      var firstInput = document.getElementById('f-place');
+      if (firstInput) firstInput.focus();
+    }
+    var tableCard = document.querySelector('.table-card');
+    if (tableCard) tableCard.style.display = 'block';
+    var statsBar = document.querySelector('.stats-bar');
+    if (statsBar) statsBar.style.display = 'grid';
+
+    // Update title
+    document.getElementById('current-view-title').innerHTML = '&#x270D;&#xFE0F; Nayi Entry (Vehicle Entry Form)';
+    var badgeEl = document.getElementById('active-filter-badge');
+    if (badgeEl) badgeEl.innerHTML = '&#x270D;&#xFE0F; Entry Mode';
+  }
+
+  function filterDepartment(dept) {
+    currentDeptFilter = dept;
+    currentDriverFilter = 'ALL';
+    ['all', 'sales', 'admin', 'loading', 'entry'].forEach(function(id) {
+      var el = document.getElementById('nav-' + id);
+      if (el) el.classList.remove('active');
+    });
+    var fleetNav = document.getElementById('nav-fleet');
+    if (fleetNav) fleetNav.classList.remove('active');
+    clearDriverNavActive();
+    var addDr = document.getElementById('nav-add-driver');
+    if (addDr) addDr.classList.remove('active');
+    document.getElementById('nav-driver-all').classList.add('active');
+
+    // Hide entry form, driver form, fleet card, report cards
+    var formEl = document.getElementById('main-entry-form-card');
+    if (formEl) formEl.style.display = 'none';
+    var driverCard = document.getElementById('add-driver-form-card');
+    if (driverCard) driverCard.style.display = 'none';
+    var fleetCard = document.getElementById('fleet-registry-card');
+    if (fleetCard) fleetCard.style.display = 'none';
+    var dateRpt = document.getElementById('date-report-card');
+    if (dateRpt) dateRpt.style.display = 'none';
+    var monthRpt = document.getElementById('monthly-report-card');
+    if (monthRpt) monthRpt.style.display = 'none';
+    var todayCard = document.getElementById('today-summary-card');
+    if (todayCard) todayCard.style.display = 'none';
+
+    // Show table and stats
+    var tableCard = document.querySelector('.table-card');
+    if (tableCard) tableCard.style.display = 'block';
+    var statsBar = document.querySelector('.stats-bar');
+    if (statsBar) statsBar.style.display = 'grid';
+
+    if (dept === 'ALL') document.getElementById('nav-all').classList.add('active');
+    if (dept === 'SALE') document.getElementById('nav-sales').classList.add('active');
+    if (dept === 'ADMIN') document.getElementById('nav-admin').classList.add('active');
+    if (dept === 'LOADING') document.getElementById('nav-loading').classList.add('active');
+
+    var titleEl = document.getElementById('current-view-title');
+    var badgeEl = document.getElementById('active-filter-badge');
+    var printDept = document.getElementById('print-dept');
+
+    if (dept === 'ALL') {
+      titleEl.innerHTML = '&#x1F3E2; All Vehicles Log Book';
+      if (badgeEl) badgeEl.innerHTML = '&#x1F3E2; Showing All Departments';
+      printDept.textContent = 'All Departments';
+    } else if (dept === 'SALE') {
+      titleEl.innerHTML = '&#x1F4BC; Sale Department Log';
+      if (badgeEl) badgeEl.innerHTML = '&#x1F4BC; Filtered: Sale Department';
+      printDept.textContent = 'Sale Department';
+      document.getElementById('f-dept').value = 'SALE';
+    } else if (dept === 'ADMIN') {
+      titleEl.innerHTML = '&#x1F3DB; Admin Department Log';
+      if (badgeEl) badgeEl.innerHTML = '&#x1F3DB; Filtered: Admin Department';
+      printDept.textContent = 'Admin Department';
+      document.getElementById('f-dept').value = 'ADMIN';
+    } else if (dept === 'LOADING') {
+      titleEl.innerHTML = '&#x1F69B; Loading Vehicles Log';
+      if (badgeEl) badgeEl.innerHTML = '&#x1F69B; Filtered: Loading Vehicles';
+      printDept.textContent = 'Loading Vehicles Department';
+      document.getElementById('f-dept').value = 'LOADING';
+    }
+
+    renderTable();
+    updateStats();
+  }
+
+  function onVehicleSelect() {
+    var sel = document.getElementById('f-vehicle-select').value;
+    var vf = document.getElementById('f-vehicle');
+    var deptSelect = document.getElementById('f-dept');
+    if (!sel || sel.startsWith('OTHER')) { vf.value = ''; vf.focus(); return; }
+    var parts = sel.split('|');
+    vf.value = parts[0] + ' - ' + parts[1];
+    if (parts[3]) deptSelect.value = parts[3];
+  }
+
+  function quickSelect(val) {
+    filterDepartment('ALL');
+    document.getElementById('f-vehicle-select').value = val;
+    onVehicleSelect();
+    showEntryForm();
+  }
+
+  // ===== FLEET VEHICLE REGISTRY MANAGEMENT =====
+  var FLEET_STORE = 'vfp_fleet_v1';
+  var DEFAULT_VEHICLES = [
+    { id: 1, vNum: 'ARQ-526', dept: 'SALE', code: '24', model: 'Suzuki / Wagon-R' },
+    { id: 2, vNum: 'ARQ-334', dept: 'SALE', code: '24', model: 'Suzuki / Wagon-R' },
+    { id: 3, vNum: 'LEA-6860', dept: 'ADMIN', code: '16A', model: 'Toyota / GLI' },
+    { id: 4, vNum: 'LEB-5449', dept: 'ADMIN', code: '20', model: 'Toyota / Yaris' },
+    { id: 5, vNum: 'LE-3153', dept: 'ADMIN', code: '17', model: 'Toyota / Vitz' },
+    { id: 6, vNum: 'AFS-612', dept: 'ADMIN', code: '21', model: 'Suzuki / Bolan' },
+    { id: 7, vNum: 'BPR-980', dept: 'ADMIN', code: '26', model: 'Changan / Carwan' },
+    { id: 8, vNum: 'CAJ-6701', dept: 'LOADING', code: '22', model: 'Suzuki / Ravi' },
+    { id: 9, vNum: 'CAV-8213', dept: 'LOADING', code: '25', model: 'Hyundai / Porter' },
+    { id: 10, vNum: 'CAF-4893', dept: 'LOADING', code: '21', model: 'Hyundai / Porter' },
+    { id: 11, vNum: 'LES-4605', dept: 'LOADING', code: '19', model: 'Hino / AVX-481 Everyduba' }
+  ];
+
+  function loadVehicles() {
+    try {
+      var raw = localStorage.getItem(FLEET_STORE);
+      if (!raw) {
+        localStorage.setItem(FLEET_STORE, JSON.stringify(DEFAULT_VEHICLES));
+        return DEFAULT_VEHICLES.slice();
+      }
+      var arr = JSON.parse(raw);
+      return Array.isArray(arr) && arr.length > 0 ? arr : DEFAULT_VEHICLES.slice();
+    } catch(e) {
+      return DEFAULT_VEHICLES.slice();
+    }
+  }
+
+  function saveVehicles(list) {
+    localStorage.setItem(FLEET_STORE, JSON.stringify(list));
+  }
+
+  function showFleetModal() {
+    // Hide other views
+    var formEl = document.getElementById('main-entry-form-card');
+    if (formEl) formEl.style.display = 'none';
+
+    var driverCard = document.getElementById('add-driver-form-card');
+    if (driverCard) driverCard.style.display = 'none';
+
+    var tableCard = document.querySelector('.table-card');
+    if (tableCard) tableCard.style.display = 'none';
+
+    var statsBar = document.querySelector('.stats-bar');
+    if (statsBar) statsBar.style.display = 'none';
+
+    // Show fleet registry card
+    var fleetCard = document.getElementById('fleet-registry-card');
+    if (fleetCard) {
+      fleetCard.style.display = 'block';
+      fleetCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Set sidebar active
+    ['all', 'sales', 'admin', 'loading', 'entry'].forEach(function(id) {
+      var el = document.getElementById('nav-' + id);
+      if (el) el.classList.remove('active');
+    });
+    clearDriverNavActive();
+    var addDr = document.getElementById('nav-add-driver');
+    if (addDr) addDr.classList.remove('active');
+
+    var fleetNav = document.getElementById('nav-fleet');
+    if (fleetNav) fleetNav.classList.add('active');
+
+    document.getElementById('current-view-title').innerHTML = '&#x1F697; Fleet &amp; Vehicle Registry';
+    renderFleetRegistryTable();
+  }
+
+  var editingVehicleId = null;
+
+  function toggleVehicleForm() {
+    var box = document.getElementById('vehicle-form-box');
+    if (!box) return;
+    if (box.style.display === 'none' || !box.style.display) {
+      box.style.display = 'block';
+      document.getElementById('vh-number').focus();
+    } else {
+      cancelVehicleForm();
+    }
+  }
+
+  function cancelVehicleForm() {
+    editingVehicleId = null;
+    var box = document.getElementById('vehicle-form-box');
+    if (box) box.style.display = 'none';
+    document.getElementById('vh-form-title').innerHTML = '&#x2795; Nayi Vehicle Add Karen (Add New Fleet Vehicle)';
+    var sBtn = document.getElementById('vh-save-btn');
+    if (sBtn) {
+      sBtn.innerHTML = '&#x1F4BE; Save Vehicle';
+      sBtn.classList.remove('btn-success');
+      sBtn.classList.add('btn-primary');
+    }
+    document.getElementById('vh-number').value = '';
+    document.getElementById('vh-dept').value = 'SALE';
+    document.getElementById('vh-code').value = '';
+    document.getElementById('vh-model').value = '';
+  }
+
+  function editVehicle(id) {
+    var vehicles = loadVehicles();
+    var v = vehicles.find(function(item){ return item.id === id; });
+    if (!v) return;
+
+    editingVehicleId = id;
+    var box = document.getElementById('vehicle-form-box');
+    if (box) box.style.display = 'block';
+
+    document.getElementById('vh-form-title').innerHTML = '&#x270F;&#xFE0F; Edit Vehicle: ' + esc(v.vNum);
+    var sBtn = document.getElementById('vh-save-btn');
+    if (sBtn) {
+      sBtn.innerHTML = '&#x1F4BE; Update Vehicle';
+      sBtn.classList.remove('btn-primary');
+      sBtn.classList.add('btn-success');
+    }
+
+    document.getElementById('vh-number').value = v.vNum || '';
+    document.getElementById('vh-dept').value = v.dept || 'SALE';
+    document.getElementById('vh-code').value = v.code || '';
+    document.getElementById('vh-model').value = v.model || '';
+
+    box.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('vh-number').focus();
+  }
+
+  function saveVehicle() {
+    var vNum  = document.getElementById('vh-number').value.trim().toUpperCase();
+    var dept  = document.getElementById('vh-dept').value;
+    var code  = document.getElementById('vh-code').value.trim();
+    var model = document.getElementById('vh-model').value.trim();
+
+    if (!vNum) { alert('Vehicle Number likhna zaroori hai!'); return; }
+    if (!model) { alert('Make / Model likhna zaroori hai!'); return; }
+
+    var vehicles = loadVehicles();
+
+    if (editingVehicleId) {
+      var idx = vehicles.findIndex(function(v){ return v.id === editingVehicleId; });
+      if (idx !== -1) {
+        vehicles[idx].vNum = vNum;
+        vehicles[idx].dept = dept;
+        vehicles[idx].code = code;
+        vehicles[idx].model = model;
+      }
+      alert('Vehicle "' + vNum + '" kamyabi se update ho gayi!');
+    } else {
+      var exists = vehicles.some(function(v){ return v.vNum === vNum; });
+      if (exists) {
+        alert('Yeh Vehicle Number pehle se registered hai!');
+        return;
+      }
+      vehicles.push({
+        id: Date.now(),
+        vNum: vNum,
+        dept: dept,
+        code: code,
+        model: model
+      });
+      alert('Nayi Vehicle "' + vNum + '" kamyabi se add ho gayi!');
+    }
+
+    saveVehicles(vehicles);
+    cancelVehicleForm();
+    renderFleetRegistryTable();
+    updateVehicleSelectDropdown();
+  }
+
+  function deleteVehicle(id) {
+    if (!confirm('Kya aap waqai is gaari ko fleet registry se delete karna chahte hain?')) return;
+    var vehicles = loadVehicles().filter(function(v){ return v.id !== id; });
+    saveVehicles(vehicles);
+    renderFleetRegistryTable();
+    updateVehicleSelectDropdown();
+  }
+
+  function renderFleetRegistryTable() {
+    var vehicles = loadVehicles();
+    var tbody = document.getElementById('fleet-registry-tbody');
+    if (!tbody) return;
+
+    var lbl = document.getElementById('fleet-nav-label');
+    if (lbl) lbl.textContent = 'Vehicle Registry (' + vehicles.length + ')';
+    var totalLbl = document.getElementById('fleet-total-count');
+    if (totalLbl) totalLbl.textContent = vehicles.length;
+
+    tbody.innerHTML = vehicles.map(function(v, idx) {
+      var badgeClass = v.dept === 'SALE' ? 'badge-amber' : v.dept === 'ADMIN' ? 'badge-purple' : 'badge-blue';
+      var deptName = v.dept === 'SALE' ? 'Sale Dept' : v.dept === 'ADMIN' ? 'Admin Dept' : 'Loading Vehicles';
+      var quickPayload = v.vNum + '|' + v.model + '|' + v.code + '|' + v.dept;
+      return '<tr>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td><span class="badge badge-blue" style="font-size:0.85rem; font-weight:700;">' + esc(v.vNum) + '</span></td>' +
+        '<td><span class="badge ' + badgeClass + '">' + deptName + '</span></td>' +
+        '<td>' + (esc(v.code) || '--') + '</td>' +
+        '<td>' + esc(v.model) + '</td>' +
+        '<td style="white-space:nowrap;">' +
+          '<button class="btn btn-outline" style="padding:2px 8px; font-size:0.75rem; margin-right:6px;" onclick="quickSelect(\'' + esc(quickPayload) + '\')">Log Trip</button>' +
+          '<button class="edit-btn" style="padding:2px 6px; font-size:0.85rem; margin-right:4px;" onclick="editVehicle(' + v.id + ')" title="Edit Vehicle">&#x270F;&#xFE0F; Edit</button>' +
+          '<button class="del-btn" style="padding:2px 6px; font-size:0.85rem;" onclick="deleteVehicle(' + v.id + ')" title="Delete Vehicle">&#x1F5D1;</button>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  function updateVehicleSelectDropdown() {
+    var sel = document.getElementById('f-vehicle-select');
+    if (!sel) return;
+    var currentVal = sel.value;
+    var vehicles = loadVehicles();
+
+    var sales = vehicles.filter(function(v){ return v.dept === 'SALE'; });
+    var admins = vehicles.filter(function(v){ return v.dept === 'ADMIN'; });
+    var loadings = vehicles.filter(function(v){ return v.dept === 'LOADING'; });
+
+    var html = '<option value="">-- Gaari Muntakhib Karen --</option>';
+
+    if (sales.length > 0) {
+      html += '<optgroup label="Sale Department Vehicles">';
+      sales.forEach(function(v){
+        html += '<option value="' + v.vNum + '|' + v.model + '|' + v.code + '|' + v.dept + '">' + v.vNum + ' &mdash; ' + v.model + ' (Code ' + v.code + ')</option>';
+      });
+      html += '</optgroup>';
+    }
+
+    if (admins.length > 0) {
+      html += '<optgroup label="Admin Department Vehicles">';
+      admins.forEach(function(v){
+        html += '<option value="' + v.vNum + '|' + v.model + '|' + v.code + '|' + v.dept + '">' + v.vNum + ' &mdash; ' + v.model + ' (Code ' + v.code + ')</option>';
+      });
+      html += '</optgroup>';
+    }
+
+    if (loadings.length > 0) {
+      html += '<optgroup label="Loading Vehicles Department">';
+      loadings.forEach(function(v){
+        html += '<option value="' + v.vNum + '|' + v.model + '|' + v.code + '|' + v.dept + '">' + v.vNum + ' &mdash; ' + v.model + ' (Code ' + v.code + ')</option>';
+      });
+      html += '</optgroup>';
+    }
+
+    html += '<option value="OTHER|Other Vehicle||OTHER">Other (Manual Input)</option>';
+    sel.innerHTML = html;
+    if (currentVal) sel.value = currentVal;
+  }
+
+  function toggleDriversList() {
+    var list = document.getElementById('driver-nav-list');
+    var arrow = document.getElementById('drivers-arrow');
+    var toggleBtn = document.getElementById('nav-drivers-toggle');
+    if (!list) return;
+    if (list.style.display === 'none' || !list.style.display) {
+      list.style.display = 'block';
+      if (arrow) arrow.innerHTML = '&#x25B2;';
+      if (toggleBtn) toggleBtn.classList.add('active');
+    } else {
+      list.style.display = 'none';
+      if (arrow) arrow.innerHTML = '&#x25BC;';
+      if (toggleBtn) toggleBtn.classList.remove('active');
+    }
+  }
+
+  function toggleSettingsMenu() {
+    var menu = document.getElementById('settings-menu');
+    var arrow = document.getElementById('settings-arrow');
+    if (!menu) return;
+    if (menu.style.display === 'none' || !menu.style.display) {
+      menu.style.display = 'flex';
+      if (arrow) arrow.innerHTML = '&#x25B2;';
+    } else {
+      menu.style.display = 'none';
+      if (arrow) arrow.innerHTML = '&#x25BC;';
+    }
+  }
+
+  function clearDriverNavActive() {
+    var list = document.getElementById('driver-nav-list');
+    if (!list) return;
+    list.querySelectorAll('.nav-item').forEach(function(el) { el.classList.remove('active'); });
+  }
+
+  function buildDriverNav() {
+    var data = load();
+    var drivers = {};
+    data.forEach(function(e) { if (e.driver) drivers[e.driver.trim()] = true; });
+    var regDrivers = loadDrivers();
+    regDrivers.forEach(function(d) { if (d.name) drivers[d.name.trim()] = true; });
+    var names = Object.keys(drivers).sort();
+
+    var toggleLabel = document.getElementById('drivers-toggle-label');
+    if (toggleLabel) {
+      toggleLabel.textContent = 'Drivers (' + names.length + ')';
+    }
+
+    var list = document.getElementById('driver-nav-list');
+    if (!list) return;
+    var allBtn = list.querySelector('#nav-driver-all');
+    var addBtn = list.querySelector('#nav-add-driver');
+    list.innerHTML = '';
+    if (allBtn) list.appendChild(allBtn);
+    if (addBtn) list.appendChild(addBtn);
+    names.forEach(function(name) {
+      var div = document.createElement('div');
+      div.className = 'nav-item' + (currentDriverFilter === name ? ' active' : '');
+      div.id = 'nav-driver-' + name.replace(/\s+/g,'_');
+      div.innerHTML = '<span class="icon">&#x1F464;</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px;" title="' + name + '">' + name + '</span>';
+      div.onclick = (function(n){ return function(){ filterByDriver(n); }; })(name);
+      list.appendChild(div);
+    });
+    if (currentDriverFilter === 'ALL') {
+      var allEl = document.getElementById('nav-driver-all');
+      if (allEl) allEl.classList.add('active');
+    }
+  }
+
+  function filterByDriver(driverName) {
+    currentDriverFilter = driverName;
+    clearDriverNavActive();
+    var list = document.getElementById('driver-nav-list');
+    var arrow = document.getElementById('drivers-arrow');
+    if (list) list.style.display = 'block';
+    if (arrow) arrow.innerHTML = '&#x25B2;';
+    var formEl = document.getElementById('main-entry-form-card');
+    if (formEl) formEl.style.display = 'none';
+    var driverCard = document.getElementById('add-driver-form-card');
+    if (driverCard) driverCard.style.display = 'none';
+    var fleetCard = document.getElementById('fleet-registry-card');
+    if (fleetCard) fleetCard.style.display = 'none';
+    var fleetNav = document.getElementById('nav-fleet');
+    if (fleetNav) fleetNav.classList.remove('active');
+    var addDr = document.getElementById('nav-add-driver');
+    if (addDr) addDr.classList.remove('active');
+
+    var tableCard = document.querySelector('.table-card');
+    if (tableCard) tableCard.style.display = 'block';
+    var statsBar = document.querySelector('.stats-bar');
+    if (statsBar) statsBar.style.display = 'grid';
+
+    if (driverName === 'ALL') {
+      var allEl = document.getElementById('nav-driver-all');
+      if (allEl) allEl.classList.add('active');
+      document.getElementById('current-view-title').innerHTML = '&#x1F465; All Drivers — Log';
+      var badgeEl = document.getElementById('active-filter-badge');
+      if (badgeEl) badgeEl.innerHTML = '&#x1F465; All Drivers';
+    } else {
+      var dId = 'nav-driver-' + driverName.replace(/\s+/g,'_');
+      var el = document.getElementById(dId);
+      if (el) el.classList.add('active');
+      document.getElementById('current-view-title').innerHTML = '&#x1F464; Driver: ' + driverName;
+      var badgeEl = document.getElementById('active-filter-badge');
+      if (badgeEl) badgeEl.innerHTML = '&#x1F464; Driver: ' + driverName;
+    }
+    renderTable();
+    updateStats();
+  }
+
+  // ===== DRIVER REGISTRY =====
+  var DRIVER_STORE = 'vfp_drivers_v1';
+  function loadDrivers() { try { return JSON.parse(localStorage.getItem(DRIVER_STORE)) || []; } catch(e) { return []; } }
+  function saveDrivers(d) { localStorage.setItem(DRIVER_STORE, JSON.stringify(d)); }
+
+  function showAddDriverForm() {
+    var ef = document.getElementById('main-entry-form-card');
+    if (ef) ef.style.display = 'none';
+    var fleetCard = document.getElementById('fleet-registry-card');
+    if (fleetCard) fleetCard.style.display = 'none';
+    var tableCard = document.querySelector('.table-card');
+    if (tableCard) tableCard.style.display = 'none';
+    var statsBar = document.querySelector('.stats-bar');
+    if (statsBar) statsBar.style.display = 'none';
+
+    ['all','sales','admin','loading','entry'].forEach(function(id){ var el=document.getElementById('nav-'+id); if(el) el.classList.remove('active'); });
+    var fleetNav = document.getElementById('nav-fleet');
+    if (fleetNav) fleetNav.classList.remove('active');
+    clearDriverNavActive();
+
+    var list = document.getElementById('driver-nav-list');
+    var arrow = document.getElementById('drivers-arrow');
+    if (list) list.style.display = 'block';
+    if (arrow) arrow.innerHTML = '&#x25B2;';
+
+    var addBtn = document.getElementById('nav-add-driver');
+    if (addBtn) addBtn.classList.add('active');
+    var df = document.getElementById('add-driver-form-card');
+    if (df) { df.style.display = 'block'; df.scrollIntoView({ behavior: 'smooth' }); }
+    document.getElementById('current-view-title').innerHTML = '&#x1F464; Driver Registry';
+    var badgeEl = document.getElementById('active-filter-badge');
+    if (badgeEl) badgeEl.innerHTML = '&#x1F464; Add Driver';
+    renderSavedDrivers();
+  }
+
+  function hideAddDriverForm() {
+    var df = document.getElementById('add-driver-form-card');
+    if (df) df.style.display = 'none';
+    clearDriverNavActive();
+    filterByDriver('ALL');
+  }
+
+  function saveDriver() {
+    var type    = document.getElementById('dr-type').value;
+    var empId   = document.getElementById('dr-emp-id').value.trim();
+    var name    = document.getElementById('dr-name').value.trim();
+    var phone   = document.getElementById('dr-phone').value.trim();
+    var license = document.getElementById('dr-license').value.trim();
+    var expiry  = document.getElementById('dr-expiry').value;
+    var address = document.getElementById('dr-address').value.trim();
+    if (!empId)   { alert('Employee ID zaroori hai!'); return; }
+    if (!name)    { alert('Full Name zaroori hai!'); return; }
+    if (!phone)   { alert('Phone number zaroori hai!'); return; }
+    if (!license) { alert('License No. zaroori hai!'); return; }
+    var drivers = loadDrivers();
+    drivers.push({ id: Date.now(), type: type, empId: empId, name: name, phone: phone, license: license, expiry: expiry, address: address });
+    saveDrivers(drivers);
+    ['dr-emp-id','dr-name','dr-phone','dr-license','dr-expiry','dr-address'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('dr-type').value = 'Company Driver';
+    alert('Driver "' + name + '" kamyabi se save ho gaya!');
+    renderSavedDrivers();
+    buildDriverNav();
+    populateDriverDropdown();
+  }
+
+  function deleteDriver(id) {
+    if (!confirm('Kya aap yeh driver delete karna chahte hain?')) return;
+    var drivers = loadDrivers().filter(function(d){ return d.id !== id; });
+    saveDrivers(drivers);
+    renderSavedDrivers();
+    buildDriverNav();
+    populateDriverDropdown();
+  }
+
+  function renderSavedDrivers() {
+    var drivers = loadDrivers();
+    var container = document.getElementById('saved-drivers-list');
+    if (!container) return;
+    if (drivers.length === 0) {
+      container.innerHTML = '<p style="color:#94a3b8;font-size:0.85rem;margin-top:8px;">Abhi koi driver register nahi kiya gaya.</p>';
+      return;
+    }
+    container.innerHTML = '<h4 style="margin-bottom:12px;color:#1e3a5f;font-size:0.95rem;">&#x1F4CB; Registered Drivers (' + drivers.length + ')</h4>' +
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;">' +
+      '<thead><tr style="background:#1e3a5f;color:#fff;">' +
+        '<th style="padding:8px 10px;text-align:left;">Emp ID</th>' +
+        '<th style="padding:8px 10px;text-align:left;">Full Name</th>' +
+        '<th style="padding:8px 10px;text-align:left;">Type</th>' +
+        '<th style="padding:8px 10px;text-align:left;">Phone</th>' +
+        '<th style="padding:8px 10px;text-align:left;">License No.</th>' +
+        '<th style="padding:8px 10px;text-align:left;">Expiry</th>' +
+        '<th style="padding:8px 10px;text-align:left;">Address</th>' +
+        '<th style="padding:8px 10px;"></th>' +
+      '</tr></thead><tbody>' +
+      drivers.map(function(d){
+        return '<tr style="border-bottom:1px solid #e2e8f0;">' +
+          '<td style="padding:7px 10px;">' + esc(d.empId) + '</td>' +
+          '<td style="padding:7px 10px;font-weight:600;">&#x1F464; ' + esc(d.name) + '</td>' +
+          '<td style="padding:7px 10px;"><span class="badge badge-blue">' + esc(d.type) + '</span></td>' +
+          '<td style="padding:7px 10px;">' + esc(d.phone) + '</td>' +
+          '<td style="padding:7px 10px;">' + esc(d.license) + '</td>' +
+          '<td style="padding:7px 10px;">' + (d.expiry||'--') + '</td>' +
+          '<td style="padding:7px 10px;">' + (esc(d.address)||'--') + '</td>' +
+          '<td style="padding:7px 10px;"><button class="del-btn" onclick="deleteDriver(' + d.id + ')" title="Delete">&#x1F5D1;</button></td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>';
+  }
+
+  function calcKm() {
+    var out = parseFloat(document.getElementById('f-meter-out').value);
+    var inp = parseFloat(document.getElementById('f-meter-in').value);
+    var el = document.getElementById('km-result');
+    if (!isNaN(out) && !isNaN(inp) && inp >= out) {
+      el.textContent = (inp - out).toFixed(1) + ' km';
+      el.style.color = '#107c41';
+    } else if (!isNaN(out) && !isNaN(inp) && inp < out) {
+      el.textContent = 'In meter chota hai!';
+      el.style.color = '#ef4444';
+    } else {
+      el.textContent = '-- km';
+      el.style.color = '#1d4ed8';
+    }
+  }
+
+  var editingEntryId = null;
+
+  function setQuickRemark(val) {
+    var el = document.getElementById('f-remark');
+    if (!el) return;
+    var current = el.value.trim();
+    if (!current) {
+      el.value = val;
+    } else {
+      var regex = /Check by [a-zA-Z\s]+/i;
+      if (regex.test(current)) {
+        el.value = current.replace(regex, val);
+      } else {
+        el.value = current + ' - ' + val;
+      }
+    }
+    el.focus();
+  }
+
+  function onDriverSelect() {
+    var sel = document.getElementById('f-driver-select').value;
+    if (sel) {
+      document.getElementById('f-driver').value = sel;
+    }
+  }
+
+  function populateDriverDropdown() {
+    var sel = document.getElementById('f-driver-select');
+    if (!sel) return;
+    var currentVal = sel.value;
+    var drivers = {};
+    load().forEach(function(e){ if (e.driver) drivers[e.driver.trim()] = true; });
+    loadDrivers().forEach(function(d){ if (d.name) drivers[d.name.trim()] = true; });
+    var names = Object.keys(drivers).sort();
+    sel.innerHTML = '<option value="">-- Driver Muntakhib Karen --</option>';
+    names.forEach(function(name){
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    if (currentVal && drivers[currentVal]) {
+      sel.value = currentVal;
+    }
+  }
+
+  function editEntry(id) {
+    var data = load();
+    var item = data.find(function(e){ return e.id === id; });
+    if (!item) return;
+
+    editingEntryId = id;
+    showEntryForm();
+
+    document.getElementById('f-dept').value = item.dept || 'SALE';
+    document.getElementById('f-date').value = item.date || '';
+    document.getElementById('f-time-out').value = item.timeOut || '';
+    document.getElementById('f-time-in').value = item.timeIn || '';
+    document.getElementById('f-place').value = item.place || '';
+    document.getElementById('f-purpose').value = item.purpose || '';
+    document.getElementById('f-meter-out').value = item.meterOut !== undefined ? item.meterOut : '';
+    document.getElementById('f-meter-in').value = item.meterIn !== undefined ? item.meterIn : '';
+    document.getElementById('f-driver').value = item.driver || '';
+    var dSel = document.getElementById('f-driver-select');
+    if (dSel) dSel.value = item.driver || '';
+    document.getElementById('f-vehicle').value = item.vehicle || '';
+    document.getElementById('f-remark').value = item.remark || '';
+
+    calcKm();
+
+    var saveBtn = document.getElementById('btn-save-entry');
+    if (saveBtn) {
+      saveBtn.innerHTML = '&#x1F4BE; Update Entry';
+      saveBtn.classList.remove('btn-primary');
+      saveBtn.classList.add('btn-success');
+    }
+    document.getElementById('current-view-title').innerHTML = '&#x270F;&#xFE0F; Edit Entry (Vehicle Log)';
+  }
+
+  function addEntry() {
+    var dept     = document.getElementById('f-dept').value;
+    var date     = document.getElementById('f-date').value;
+    var timeOut  = document.getElementById('f-time-out').value;
+    var timeIn   = document.getElementById('f-time-in').value;
+    var place    = document.getElementById('f-place').value.trim();
+    var purpose  = document.getElementById('f-purpose').value.trim();
+    var meterOut = parseFloat(document.getElementById('f-meter-out').value);
+    var meterIn  = parseFloat(document.getElementById('f-meter-in').value);
+    var driver   = document.getElementById('f-driver').value.trim();
+    var vehicle  = document.getElementById('f-vehicle').value.trim();
+    var remark   = document.getElementById('f-remark').value.trim();
+
+    var selVal   = document.getElementById('f-vehicle-select').value;
+    var model    = '';
+    if (selVal && !selVal.startsWith('OTHER')) {
+      model = selVal.split('|')[1] || '';
+    } else {
+      model = vehicle.indexOf('-') !== -1 ? vehicle.split('-').slice(1).join('-').trim() : '';
+    }
+
+    if (!date)   { alert('Date likhna zaroori hai!'); return; }
+    if (!place)  { alert('Place (Khan per giy thy) zaroori hai!'); return; }
+    if (!driver) { alert('Driver ka naam zaroori hai!'); return; }
+    if (!vehicle){ alert('Vehicle number zaroori hai!'); return; }
+    if (isNaN(meterOut) || isNaN(meterIn)) { alert('Out Meter aur In Meter dono likhna zaroori hain!'); return; }
+    if (meterIn < meterOut) { alert('In Meter, Out Meter se barra ya barabar hona chahiye!'); return; }
+
+    var km = parseFloat((meterIn - meterOut).toFixed(1));
+    var data = load();
+
+    if (editingEntryId) {
+      var idx = data.findIndex(function(e){ return e.id === editingEntryId; });
+      if (idx !== -1) {
+        data[idx].dept = dept;
+        data[idx].date = date;
+        data[idx].timeOut = timeOut;
+        data[idx].timeIn = timeIn;
+        data[idx].place = place;
+        data[idx].purpose = purpose;
+        data[idx].meterOut = meterOut;
+        data[idx].meterIn = meterIn;
+        data[idx].km = km;
+        data[idx].driver = driver;
+        data[idx].vehicle = vehicle;
+        data[idx].model = model;
+        data[idx].remark = remark;
+      }
+      editingEntryId = null;
+      alert('Entry kamyabi se update ho gayi!');
+    } else {
+      var entry = { id: Date.now(), dept: dept, date: date, timeOut: timeOut, timeIn: timeIn, place: place, purpose: purpose, meterOut: meterOut, meterIn: meterIn, km: km, driver: driver, vehicle: vehicle, model: model, remark: remark };
+      data.push(entry);
+      alert('Entry kamyabi se save ho gayi!');
+    }
+
+    save(data);
+    clearForm();
+    filterDepartment(dept);
+  }
+
+  function deleteEntry(id) {
+    if (!confirm('Kya aap waqai yeh record delete karna chahte hain?')) return;
+    var data = load().filter(function(e){ return e.id !== id; });
+    save(data);
+    renderTable();
+    updateStats();
+  }
+
+  function clearForm() {
+    editingEntryId = null;
+    var saveBtn = document.getElementById('btn-save-entry');
+    if (saveBtn) {
+      saveBtn.innerHTML = '&#x1F4BE; Entry Save Karen';
+      saveBtn.classList.remove('btn-success');
+      saveBtn.classList.add('btn-primary');
+    }
+    ['f-time-out','f-time-in','f-place','f-purpose','f-meter-out','f-meter-in','f-driver','f-vehicle','f-remark'].forEach(function(id){
+      var el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('f-vehicle-select').value = '';
+    var dSel = document.getElementById('f-driver-select');
+    if (dSel) dSel.value = '';
+    var today = new Date().toISOString().split('T')[0];
+    document.getElementById('f-date').value = today;
+    document.getElementById('km-result').textContent = '-- km';
+    document.getElementById('km-result').style.color = '#1d4ed8';
+  }
+
+  function clearAll() {
+    if (!confirm('Khabardar: SARI entries delete ho jayen gi! Kya aap Excel backup le chukay hain?')) return;
+    save([]);
+    renderTable();
+    updateStats();
+  }
+
+  function getDeptBadge(dept) {
+    if (dept === 'SALE') return '<span class="badge badge-amber">Sale Dept</span>';
+    if (dept === 'ADMIN') return '<span class="badge badge-purple">Admin Dept</span>';
+    if (dept === 'LOADING') return '<span class="badge badge-blue">Loading</span>';
+    return '<span class="badge badge-blue">' + (dept||'General') + '</span>';
+  }
+
+  function renderTable() {
+    var data  = load();
+    var q     = document.getElementById('search-box').value.toLowerCase();
+    var tbody = document.getElementById('log-body');
+    var tfoot = document.getElementById('log-foot');
+    var empty = document.getElementById('empty-state');
+
+    var filtered = data;
+    if (currentDeptFilter !== 'ALL') {
+      filtered = filtered.filter(function(e){ return e.dept === currentDeptFilter; });
+    }
+    if (currentDriverFilter !== 'ALL') {
+      filtered = filtered.filter(function(e){ return (e.driver||'').trim() === currentDriverFilter; });
+    }
+
+    if (q) {
+      filtered = filtered.filter(function(e){
+        return [e.dept, e.date, e.place, e.purpose, e.driver, e.vehicle, e.remark].join(' ').toLowerCase().indexOf(q) !== -1;
+      });
+    }
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '';
+      tfoot.innerHTML = '';
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+
+    var sorted = filtered.slice().sort(function(a,b){ return b.id - a.id; });
+    var totalKm = filtered.reduce(function(s,e){ return s + (e.km||0); }, 0);
+
+    tbody.innerHTML = sorted.map(function(e, i){
+      var vNum = e.vehicle.split(' - ')[0] || e.vehicle;
+      return '<tr>' +
+        '<td><span class="badge badge-blue">' + (sorted.length - i) + '</span></td>' +
+        '<td>' + getDeptBadge(e.dept) + '</td>' +
+        '<td>' + fmt(e.date) + '</td>' +
+        '<td>' + (e.timeOut || '--') + '</td>' +
+        '<td>' + (e.timeIn  || '--') + '</td>' +
+        '<td class="place-cell"><strong>' + esc(e.place) + '</strong></td>' +
+        '<td>' + (esc(e.purpose) || '--') + '</td>' +
+        '<td>' + e.meterOut.toLocaleString() + '</td>' +
+        '<td>' + e.meterIn.toLocaleString() + '</td>' +
+        '<td class="km-cell">' + e.km + ' km</td>' +
+        '<td>&#x1F464; ' + esc(e.driver) + '</td>' +
+        '<td><span class="badge badge-blue">' + esc(vNum) + '</span></td>' +
+        '<td class="remark-cell">' + (esc(e.remark) || '--') + '</td>' +
+        '<td class="no-print" style="white-space:nowrap;text-align:center;">' +
+          '<button class="edit-btn" onclick="editEntry(' + e.id + ')" title="Edit Entry">&#x270F;&#xFE0F;</button>' +
+          '<button class="del-btn" onclick="deleteEntry(' + e.id + ')" title="Delete Entry">&#x1F5D1;</button>' +
+        '</td>' +
+        '</tr>';
+    }).join('');
+
+    tfoot.innerHTML = '<tr style="background:#1e3a5f; color:#fff; font-weight:700;">' +
+      '<td colspan="9" style="padding:8px; text-align:right;">TOTAL KM (' + (currentDeptFilter === 'ALL' ? 'ALL DEPTS' : currentDeptFilter) + '):</td>' +
+      '<td style="padding:8px; color:#fbbf24;">' + totalKm.toFixed(1) + ' km</td>' +
+      '<td colspan="4"></td>' +
+      '</tr>';
+  }
+
+  function updateStats() {
+    var allData = load();
+    var countSale = allData.filter(function(e){ return e.dept === 'SALE'; }).length;
+    var countAdmin = allData.filter(function(e){ return e.dept === 'ADMIN'; }).length;
+    var countLoading = allData.filter(function(e){ return e.dept === 'LOADING'; }).length;
+
+    document.getElementById('badge-all').textContent = allData.length;
+    document.getElementById('badge-sales').textContent = countSale;
+    document.getElementById('badge-admin').textContent = countAdmin;
+    document.getElementById('badge-loading').textContent = countLoading;
+
+    var viewData = currentDeptFilter === 'ALL' ? allData : allData.filter(function(e){ return e.dept === currentDeptFilter; });
+    var totalKm = viewData.reduce(function(s,e){ return s + (e.km||0); }, 0);
+    var drivers = {}; viewData.forEach(function(e){ drivers[e.driver] = 1; });
+    var vehicles = {}; viewData.forEach(function(e){ vehicles[e.vehicle] = 1; });
+
+    document.getElementById('stat-entries').textContent  = viewData.length;
+    document.getElementById('stat-km').textContent       = totalKm.toFixed(1) + ' km';
+    document.getElementById('stat-drivers').textContent  = Object.keys(drivers).length;
+    document.getElementById('stat-vehicles').textContent = Object.keys(vehicles).length;
+    buildDriverNav();
+    populateDriverDropdown();
+  }
+
+  function exportToExcel() {
+    var data = load();
+    if (data.length === 0) {
+      alert('Excel mein export karne ke liye koi data nahi hai!');
+      return;
+    }
+
+    var targetData = currentDeptFilter === 'ALL' ? data : data.filter(function(e){ return e.dept === currentDeptFilter; });
+    var rows = targetData.map(function(e, i) {
+      return {
+        "Sr #": i + 1,
+        "Department": e.dept === 'SALE' ? 'Sale Dept' : e.dept === 'ADMIN' ? 'Admin Dept' : 'Loading Vehicles',
+        "Date": e.date,
+        "Time Out": e.timeOut || '',
+        "Time In": e.timeIn || '',
+        "Place Visited": e.place,
+        "Purpose": e.purpose || '',
+        "Out Meter": e.meterOut,
+        "In Meter": e.meterIn,
+        "KM Driven": e.km,
+        "Driver": e.driver,
+        "Vehicle No": e.vehicle.split(' - ')[0] || e.vehicle,
+        "Remarks": e.remark || ''
+      };
+    });
+
+    if (window.XLSX) {
+      var wb = XLSX.utils.book_new();
+      var ws = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, "Vehicle Log Book");
+      var fileName = 'Vehicle_LogBook_' + (currentDeptFilter === 'ALL' ? 'All_Depts' : currentDeptFilter) + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
+      XLSX.writeFile(wb, fileName);
+    } else {
+      exportToCSV();
+    }
+  }
+
+  function exportToCSV() {
+    var data = load();
+    if (data.length === 0) { alert('Export ke liye koi data nahi hai!'); return; }
+    var targetData = currentDeptFilter === 'ALL' ? data : data.filter(function(e){ return e.dept === currentDeptFilter; });
+    var headers = ["Sr #", "Department", "Date", "Time Out", "Time In", "Place Visited", "Purpose", "Out Meter", "In Meter", "KM Driven", "Driver Name", "Vehicle No", "Remarks"];
+    var csvContent = "\uFEFF" + headers.map(function(h){ return '"' + h + '"'; }).join(',') + "\r\n";
+
+    targetData.forEach(function(e, i) {
+      var row = [i + 1, e.dept, e.date, e.timeOut || '', e.timeIn || '', e.place, e.purpose || '', e.meterOut, e.meterIn, e.km, e.driver, e.vehicle.split(' - ')[0] || e.vehicle, e.remark || ''];
+      csvContent += row.map(function(cell){
+        var str = (cell === null || cell === undefined) ? '' : String(cell);
+        return '"' + str.replace(/"/g, '""') + '"';
+      }).join(',') + "\r\n";
+    });
+
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var link = document.createElement("a");
+    var url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", 'Vehicle_LogBook_' + new Date().toISOString().split('T')[0] + '.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function backupJSON() {
+    var data = load();
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = 'LogBook_Backup_' + new Date().toISOString().split('T')[0] + '.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function restoreBackup(event) {
+    var file = event.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var restored = JSON.parse(e.target.result);
+        if (Array.isArray(restored)) {
+          save(restored);
+        } else if (restored && restored.logs) {
+          save(restored.logs);
+        }
+        renderTable();
+        updateStats();
+        alert('Backup kamyabi se restore ho gaya!');
+      } catch(err) {
+        alert('File read karne mein masla hua: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  function fmt(d) {
+    if (!d) return '--';
+    var p = d.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+
+  // ── Fix: PSO Oil -> Petrol/Diesel + km=0 + date sort ──────────────────
+  (function fixPSOandSort() {
+    if (localStorage.getItem('vfp_fix_pso_sort_v1')) return;
+    var data = load();
+
+    data = data.map(function(e) {
+      var purposeLower = (e.purpose || '').toLowerCase().trim();
+      var isPSOfuel = (purposeLower === 'oil' || purposeLower === 'petrol' || purposeLower === 'diesel');
+      if (isPSOfuel) {
+        e.purpose = 'Petrol/Diesel';
+        e.meterIn = e.meterOut;
+        e.km = 0;
+      }
+      return e;
+    });
+
+    data.sort(function(a, b) {
+      if ((a.date || '') < (b.date || '')) return -1;
+      if ((a.date || '') > (b.date || '')) return 1;
+      if ((a.timeOut || '') < (b.timeOut || '')) return -1;
+      if ((a.timeOut || '') > (b.timeOut || '')) return 1;
+      return 0;
+    });
+
+    save(data);
+    localStorage.setItem('vfp_fix_pso_sort_v1', '1');
+    renderTable();
+    updateStats();
+  })();
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── One-time seed: handwritten log entries (Sept 16-17 2026) ──────────────────
+  (function seedSept16_17_2026() {
+    if (localStorage.getItem('vfp_seeded_sept16_17_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1726477600013, dept: 'LOADING', date: '2026-09-16', timeOut: '11:30', timeIn: '12:00', place: 'PSO', purpose: '', meterOut: 40886, meterIn: 40890, km: 4, driver: 'Masood', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726477600014, dept: 'LOADING', date: '2026-09-16', timeOut: '12:10', timeIn: '15:00', place: 'Multan Road', purpose: '', meterOut: 40890, meterIn: 40934, km: 44, driver: 'saeed', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726477600015, dept: 'LOADING', date: '2026-09-16', timeOut: '12:15', timeIn: '21:15', place: 'Market', purpose: 'Route', meterOut: 187305, meterIn: 187423, km: 118, driver: 'Zubair', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Khalid' },
+      { id: 1726477600016, dept: 'LOADING', date: '2026-09-16', timeOut: '13:27', timeIn: '15:15', place: 'Fast Canteen', purpose: 'Pick Papers', meterOut: 64401, meterIn: 64410, km: 9, driver: 'Masood', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Khalid' },
+      { id: 1726477600017, dept: 'LOADING', date: '2026-09-16', timeOut: '16:50', timeIn: '18:25', place: 'Dawn Paper Market', purpose: '', meterOut: 233116, meterIn: 233121, km: 5, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726477600018, dept: 'ADMIN', date: '2026-09-16', timeOut: '17:10', timeIn: '18:45', place: 'Adda Plot', purpose: 'Pick Staff', meterOut: 16026, meterIn: 16069, km: 43, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Khalid' },
+      { id: 1726477600019, dept: 'LOADING', date: '2026-09-16', timeOut: '19:00', timeIn: '', place: 'Asif + Ehsan', purpose: '', meterOut: 40890, meterIn: 41035, km: 145, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726477600020, dept: 'LOADING', date: '2026-09-16', timeOut: '19:15', timeIn: '20:15', place: 'Central Market', purpose: 'Dawn Paper Add', meterOut: 233121, meterIn: 233127, km: 6, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Ashfaq' },
+      { id: 1726477600021, dept: 'ADMIN', date: '2026-09-16', timeOut: '06:15', timeIn: '08:55', place: 'Ali Town', purpose: 'Pick Staff', meterOut: 16069, meterIn: 16167, km: 98, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Ashfaq' },
+
+      { id: 1726564000001, dept: 'LOADING', date: '2026-09-17', timeOut: '07:20', timeIn: '12:00', place: 'SO1 Central Model', purpose: 'Bring Goods', meterOut: 233127, meterIn: 233129, km: 2, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1726564000002, dept: 'ADMIN', date: '2026-09-17', timeOut: '09:25', timeIn: '10:10', place: 'PSO', purpose: '', meterOut: 16167, meterIn: 16172, km: 5, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Khalid' },
+      { id: 1726564000003, dept: 'ADMIN', date: '2026-09-17', timeOut: '09:40', timeIn: '10:15', place: 'PSO', purpose: '', meterOut: 215784, meterIn: 215789, km: 5, driver: 'saeed', vehicle: 'LE-3153 - Vitz', model: 'Vitz', remark: 'Check by Khalid' },
+      { id: 1726564000004, dept: 'ADMIN', date: '2026-09-17', timeOut: '10:00', timeIn: '13:00', place: 'Dawn Factory', purpose: '', meterOut: 168221, meterIn: 168338, km: 117, driver: 'Ashfaq', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Khalid' },
+      { id: 1726564000005, dept: 'ADMIN', date: '2026-09-17', timeOut: '11:00', timeIn: '13:35', place: 'Shadman Motorway Service', purpose: '', meterOut: 215789, meterIn: 215872, km: 83, driver: 'saeed', vehicle: 'LE-3153 - Vitz', model: 'Vitz', remark: 'Check by Khalid' },
+      { id: 1726564000006, dept: 'LOADING', date: '2026-09-17', timeOut: '11:40', timeIn: '', place: 'Route', purpose: '', meterOut: 187423, meterIn: 187500, km: 77, driver: 'Masood', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Khalid' },
+      { id: 1726564000007, dept: 'LOADING', date: '2026-09-17', timeOut: '12:00', timeIn: '13:50', place: 'Dawn Paper Market', purpose: '', meterOut: 233129, meterIn: 233134, km: 5, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726564000008, dept: 'LOADING', date: '2026-09-17', timeOut: '13:40', timeIn: '', place: 'Atta Bakery Raiwind', purpose: 'Pick Goods', meterOut: 64410, meterIn: 64450, km: 40, driver: 'Usama', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept16_17_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 15-16 2026) ──────────────────
+  (function seedSept15_16_2026() {
+    if (localStorage.getItem('vfp_seeded_sept15_16_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1726391200005, dept: 'LOADING', date: '2026-09-15', timeOut: '11:32', timeIn: '16:35', place: 'Dalan Shehr', purpose: '', meterOut: 27299, meterIn: 27373, km: 74, driver: 'saeed', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Khalid' },
+      { id: 1726391200006, dept: 'ADMIN', date: '2026-09-15', timeOut: '12:05', timeIn: '12:26', place: 'Workshop', purpose: 'Air in Tires', meterOut: 85770, meterIn: 85865, km: 95, driver: 'Ashfaq', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Khalid' },
+      { id: 1726391200007, dept: 'SALE', date: '2026-09-15', timeOut: '12:38', timeIn: '22:45', place: '', purpose: 'Delivery', meterOut: 41985, meterIn: 42025, km: 40, driver: 'Umer Dogar', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Khalid' },
+      { id: 1726391200008, dept: 'LOADING', date: '2026-09-15', timeOut: '13:20', timeIn: '14:05', place: 'PSO', purpose: '', meterOut: 187301, meterIn: 187305, km: 4, driver: 'Zubair', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Khalid' },
+      { id: 1726391200009, dept: 'LOADING', date: '2026-09-15', timeOut: '14:00', timeIn: '20:20', place: '', purpose: 'For Goods', meterOut: 233002, meterIn: 233017, km: 15, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726391200010, dept: 'ADMIN', date: '2026-09-15', timeOut: '17:09', timeIn: '21:05', place: '', purpose: 'Staff Drop', meterOut: 15874, meterIn: 15960, km: 86, driver: 'Raees Ahmed', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Khalid' },
+      { id: 1726391200011, dept: 'SALE', date: '2026-09-15', timeOut: '17:10', timeIn: '17:20', place: 'PSO', purpose: '', meterOut: 66206, meterIn: 66211, km: 5, driver: 'Masood', vehicle: 'ART-542 - Vehicle', model: 'Vehicle', remark: 'Check by Khalid' },
+      { id: 1726391200012, dept: 'LOADING', date: '2026-09-15', timeOut: '18:00', timeIn: '10:15', place: '', purpose: 'Waseef + Ehsan', meterOut: 40781, meterIn: 40886, km: 105, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+
+      { id: 1726477600001, dept: 'ADMIN', date: '2026-09-16', timeOut: '06:40', timeIn: '08:53', place: '', purpose: 'Pick Staff', meterOut: 15960, meterIn: 16026, km: 66, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Ashfaq' },
+      { id: 1726477600002, dept: 'LOADING', date: '2026-09-16', timeOut: '08:25', timeIn: '08:40', place: 'PSO', purpose: 'Oil', meterOut: 64397, meterIn: 64399, km: 2, driver: 'Zubair', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Khalid' },
+      { id: 1726477600003, dept: 'LOADING', date: '2026-09-16', timeOut: '08:25', timeIn: '08:40', place: 'PSO', purpose: 'Oil', meterOut: 233017, meterIn: 233022, km: 5, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726477600004, dept: 'SALE', date: '2026-09-16', timeOut: '08:30', timeIn: '08:40', place: 'PSO', purpose: 'Oil', meterOut: 65306, meterIn: 65310, km: 4, driver: 'Ashfaq', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Khalid' },
+      { id: 1726477600005, dept: 'LOADING', date: '2026-09-16', timeOut: '08:30', timeIn: '08:40', place: 'PSO', purpose: 'Oil', meterOut: 27373, meterIn: 27378, km: 5, driver: 'saeed', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Khalid' },
+      { id: 1726477600006, dept: 'ADMIN', date: '2026-09-16', timeOut: '08:33', timeIn: '08:40', place: 'PSO', purpose: 'Oil', meterOut: 324662, meterIn: 324667, km: 5, driver: 'Usama', vehicle: 'LEA-6860 - Toyota GLI', model: 'Toyota GLI', remark: 'Check by Khalid' },
+      { id: 1726477600007, dept: 'SALE', date: '2026-09-16', timeOut: '08:40', timeIn: '09:10', place: 'PSO', purpose: 'Oil', meterOut: 42025, meterIn: 42030, km: 5, driver: 'Ashfaq', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Khalid' },
+      { id: 1726477600008, dept: 'LOADING', date: '2026-09-16', timeOut: '09:05', timeIn: '12:50', place: 'Noman Dispensary', purpose: '', meterOut: 233022, meterIn: 233116, km: 94, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+      { id: 1726477600009, dept: 'SALE', date: '2026-09-16', timeOut: '10:10', timeIn: '19:00', place: 'City Pharma', purpose: '', meterOut: 65310, meterIn: 65457, km: 147, driver: 'Asad Saleem', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Khalid' },
+      { id: 1726477600010, dept: 'ADMIN', date: '2026-09-16', timeOut: '10:20', timeIn: '11:50', place: 'Mustansariya', purpose: 'Shahbaz Micro', meterOut: 168180, meterIn: 168221, km: 41, driver: 'saeed', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Khalid' },
+      { id: 1726477600011, dept: 'SALE', date: '2026-09-16', timeOut: '10:57', timeIn: '13:15', place: 'Workshop Sundar', purpose: '', meterOut: 66245, meterIn: 66294, km: 49, driver: 'Ashfaq', vehicle: 'ART-542 - Vehicle', model: 'Vehicle', remark: 'Check by Khalid' },
+      { id: 1726477600012, dept: 'LOADING', date: '2026-09-16', timeOut: '11:48', timeIn: '18:52', place: 'Marhaba Lahore', purpose: '', meterOut: 27378, meterIn: 27452, km: 74, driver: 'Usama', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Khalid' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept15_16_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 12-15 2026) ──────────────────
+  (function seedSept12_15_2026() {
+    if (localStorage.getItem('vfp_seeded_sept12_15_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1726132000008, dept: 'LOADING', date: '2026-09-12', timeOut: '17:30', timeIn: '09:50', place: 'Lahore', purpose: 'Drop Staff', meterOut: 40553, meterIn: 40680, km: 127, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1726132000009, dept: 'ADMIN', date: '2026-09-12', timeOut: '17:10', timeIn: '18:20', place: 'Adda Plot', purpose: 'Drop Staff', meterOut: 15663, meterIn: 15703, km: 40, driver: 'Ashfaq', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1726132000010, dept: 'ADMIN', date: '2026-09-12', timeOut: '10:00', timeIn: '17:40', place: 'Grid Lahore Cantt', purpose: 'For Site', meterOut: 85606, meterIn: 85898, km: 292, driver: 'Muneer', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Azam' },
+      
+      { id: 1726218400001, dept: 'SALE', date: '2026-09-13', timeOut: '15:20', timeIn: '16:00', place: 'Railway Road Adda', purpose: 'Pick Cycle Parts', meterOut: 65212, meterIn: 65237, km: 25, driver: 'Masood', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Khalid' },
+
+      { id: 1726304800001, dept: 'ADMIN', date: '2026-09-14', timeOut: '06:40', timeIn: '09:00', place: 'Adda Plot', purpose: 'Pick Staff', meterOut: 15703, meterIn: 15769, km: 66, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Ashfaq' },
+      { id: 1726304800002, dept: 'ADMIN', date: '2026-09-14', timeOut: '09:45', timeIn: '11:35', place: 'Gulberg', purpose: '', meterOut: 168013, meterIn: 168092, km: 79, driver: 'Masood', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Khalid' },
+      { id: 1726304800003, dept: 'ADMIN', date: '2026-09-14', timeOut: '10:20', timeIn: '12:55', place: 'Manga Road', purpose: '', meterOut: 96602, meterIn: 96656, km: 54, driver: 'Raees Ahmed', vehicle: 'ARX-361 - Vehicle', model: 'Vehicle', remark: 'Check by Khalid' },
+      { id: 1726304800004, dept: 'ADMIN', date: '2026-09-14', timeOut: '11:50', timeIn: '12:00', place: 'PSO', purpose: 'Oil', meterOut: 168092, meterIn: 168097, km: 5, driver: 'Masood', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Khalid' },
+      { id: 1726304800005, dept: 'LOADING', date: '2026-09-14', timeOut: '12:00', timeIn: '22:00', place: 'Motorway', purpose: 'Market', meterOut: 187126, meterIn: 187301, km: 175, driver: 'saeed', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Khalid' },
+      { id: 1726304800006, dept: 'ADMIN', date: '2026-09-14', timeOut: '12:00', timeIn: '12:15', place: 'PSO', purpose: 'Oil', meterOut: 85698, meterIn: 85703, km: 5, driver: 'Masood', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Khalid' },
+      { id: 1726304800007, dept: 'ADMIN', date: '2026-09-14', timeOut: '12:30', timeIn: '12:40', place: 'PSO', purpose: 'Oil', meterOut: 215625, meterIn: 215628, km: 3, driver: 'Masood', vehicle: 'LE-3153 - Vitz', model: 'Vitz', remark: 'Check by Khalid' },
+      { id: 1726304800008, dept: 'ADMIN', date: '2026-09-14', timeOut: '13:15', timeIn: '15:40', place: 'Grid Station', purpose: '', meterOut: 85703, meterIn: 85728, km: 25, driver: 'Zubair', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Khalid' },
+      { id: 1726304800009, dept: 'ADMIN', date: '2026-09-14', timeOut: '15:35', timeIn: '18:40', place: 'Gulberg', purpose: '', meterOut: 168097, meterIn: 168180, km: 83, driver: 'Masood', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Khalid' },
+      { id: 1726304800010, dept: 'ADMIN', date: '2026-09-14', timeOut: '17:10', timeIn: '18:20', place: 'Adda Plot', purpose: 'Drop Staff', meterOut: 15769, meterIn: 15808, km: 39, driver: 'Zubair', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Khalid' },
+      { id: 1726304800011, dept: 'SALE', date: '2026-09-14', timeOut: '17:30', timeIn: '22:10', place: 'Multan Road', purpose: '', meterOut: 65240, meterIn: 65306, km: 66, driver: 'Asad Dogar', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Khalid' },
+      { id: 1726304800012, dept: 'LOADING', date: '2026-09-14', timeOut: '17:40', timeIn: '09:50', place: 'Lahore', purpose: 'Drop Staff', meterOut: 40680, meterIn: 40781, km: 101, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Khalid' },
+
+      { id: 1726391200001, dept: 'ADMIN', date: '2026-09-15', timeOut: '06:40', timeIn: '09:00', place: 'Adda Plot', purpose: 'Pick Staff', meterOut: 15808, meterIn: 15874, km: 66, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Ashfaq' },
+      { id: 1726391200002, dept: 'ADMIN', date: '2026-09-15', timeOut: '08:20', timeIn: '11:54', place: 'Bahria Town', purpose: '', meterOut: 85703, meterIn: 85770, km: 67, driver: 'Ashfaq', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Khalid' },
+      { id: 1726391200003, dept: 'ADMIN', date: '2026-09-15', timeOut: '09:02', timeIn: '15:25', place: 'Raiwind Road', purpose: '', meterOut: 215628, meterIn: 215784, km: 156, driver: 'Masood', vehicle: 'LE-3153 - Vitz', model: 'Vitz', remark: 'Check by Khalid' },
+      { id: 1726391200004, dept: 'LOADING', date: '2026-09-15', timeOut: '10:25', timeIn: '', place: 'Dawn News Market', purpose: '', meterOut: 232997, meterIn: 233002, km: 5, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Khalid' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept12_15_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 10-12 2026) ──────────────────
+  (function seedSept10_12_2026() {
+    if (localStorage.getItem('vfp_seeded_sept10_12_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1725959200009, dept: 'ADMIN', date: '2026-09-10', timeOut: '17:10', timeIn: '18:30', place: 'Adda Plot', purpose: 'Drop Staff', meterOut: 15446, meterIn: 15486, km: 40, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725959200010, dept: 'LOADING', date: '2026-09-10', timeOut: '11:00', timeIn: '17:40', place: 'Sundar Adda', purpose: 'Godown Shifting', meterOut: 232792, meterIn: 232873, km: 81, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: '' },
+      { id: 1725959200011, dept: 'LOADING', date: '2026-09-10', timeOut: '07:20', timeIn: '', place: 'Lahore', purpose: 'Drop Staff', meterOut: 40346, meterIn: 40447, km: 101, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      
+      { id: 1726045600001, dept: 'ADMIN', date: '2026-09-11', timeOut: '06:45', timeIn: '09:00', place: 'Adda Plot', purpose: 'Pick Staff', meterOut: 15486, meterIn: 15546, km: 60, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Ashfaq' },
+      { id: 1726045600002, dept: 'ADMIN', date: '2026-09-11', timeOut: '08:45', timeIn: '16:43', place: 'Coca Cola Factory', purpose: 'Visit with Tahir sb', meterOut: 85515, meterIn: 85606, km: 91, driver: 'Masood', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Azam' },
+      { id: 1726045600003, dept: 'ADMIN', date: '2026-09-11', timeOut: '09:45', timeIn: '13:55', place: 'Lahore', purpose: 'Ali Imran, Shahbaz ke sath', meterOut: 15546, meterIn: 15592, km: 46, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1726045600004, dept: 'LOADING', date: '2026-09-11', timeOut: '10:45', timeIn: '13:49', place: 'Saggian', purpose: 'Booking Board', meterOut: 232873, meterIn: 232957, km: 84, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1726045600005, dept: 'ADMIN', date: '2026-09-11', timeOut: '12:45', timeIn: '19:25', place: 'Lahore', purpose: 'Market', meterOut: 215580, meterIn: 215625, km: 45, driver: 'saeed', vehicle: 'LE-3153 - Vitz', model: 'Vitz', remark: '' },
+      { id: 1726045600006, dept: 'LOADING', date: '2026-09-11', timeOut: '16:40', timeIn: '17:10', place: 'Lohari', purpose: 'Packing Saman Drop', meterOut: 186821, meterIn: 186898, km: 77, driver: 'saeed', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1726045600007, dept: 'SALE', date: '2026-09-11', timeOut: '17:05', timeIn: '18:28', place: 'Adda Plot', purpose: 'Drop Staff', meterOut: 65205, meterIn: 65213, km: 8, driver: 'Ashfaq', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1726045600008, dept: 'LOADING', date: '2026-09-11', timeOut: '17:50', timeIn: '', place: 'Lahore', purpose: 'Drop Staff', meterOut: 40447, meterIn: 40548, km: 101, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1726045600009, dept: 'ADMIN', date: '2026-09-11', timeOut: '17:56', timeIn: '12:10', place: 'Bahria Town', purpose: 'Ghar Saman Dene', meterOut: 167841, meterIn: 167935, km: 94, driver: 'Ashfaq', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1726045600010, dept: 'ADMIN', date: '2026-09-11', timeOut: '19:45', timeIn: '20:50', place: 'Adda Plot', purpose: 'Drop Staff', meterOut: 324632, meterIn: 324662, km: 30, driver: 'Bilal Manzoor', vehicle: 'LEA-6860 - Toyota GLI', model: 'Toyota GLI', remark: 'Check by Azam' },
+      { id: 1726045600011, dept: 'LOADING', date: '2026-09-11', timeOut: '20:00', timeIn: '00:15', place: 'Data Sahab', purpose: 'Pick Staff', meterOut: 232957, meterIn: 232997, km: 40, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: '' },
+
+      { id: 1726132000001, dept: 'ADMIN', date: '2026-09-12', timeOut: '06:40', timeIn: '09:00', place: 'Adda Plot', purpose: 'Pick Staff', meterOut: 15592, meterIn: 15658, km: 66, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: '' },
+      { id: 1726132000002, dept: 'LOADING', date: '2026-09-12', timeOut: '07:10', timeIn: '10:25', place: 'Kasur', purpose: 'Faisal Salesman', meterOut: 232997, meterIn: 233050, km: 53, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1726132000003, dept: 'LOADING', date: '2026-09-12', timeOut: '09:47', timeIn: '10:22', place: 'PSO', purpose: 'Oil', meterOut: 40548, meterIn: 40553, km: 5, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1726132000004, dept: 'ADMIN', date: '2026-09-12', timeOut: '09:47', timeIn: '10:00', place: 'PSO', purpose: 'Oil', meterOut: 15658, meterIn: 15663, km: 5, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1726132000005, dept: 'LOADING', date: '2026-09-12', timeOut: '12:25', timeIn: '18:05', place: 'Lahore', purpose: 'Market', meterOut: 186898, meterIn: 187126, km: 228, driver: 'saeed', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1726132000006, dept: 'ADMIN', date: '2026-09-12', timeOut: '12:15', timeIn: '23:00', place: 'Lahore', purpose: 'Supply Delivery', meterOut: 167935, meterIn: 168013, km: 78, driver: 'Ashfaq', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1726132000007, dept: 'LOADING', date: '2026-09-12', timeOut: '11:40', timeIn: '', place: 'Lahore', purpose: 'Wapda Town Maal Dene', meterOut: 64319, meterIn: 64491, km: 172, driver: 'Qasim', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept10_12_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 09-10 2026) ──────────────────
+  (function seedSept09_10_2026() {
+    if (localStorage.getItem('vfp_seeded_sept09_10_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1725872800001, dept: 'ADMIN', date: '2026-09-09', timeOut: '06:50', timeIn: '08:58', place: 'Adda Plot', purpose: 'Pick Staff', meterOut: 15262, meterIn: 15343, km: 81, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Ashfaq' },
+      { id: 1725872800002, dept: 'LOADING', date: '2026-09-09', timeOut: '09:15', timeIn: '10:00', place: 'Lahore', purpose: 'Local', meterOut: 232632, meterIn: 232638, km: 6, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: '' },
+      { id: 1725872800003, dept: 'LOADING', date: '2026-09-09', timeOut: '10:05', timeIn: '10:34', place: 'PSO', purpose: 'Petrol', meterOut: 232638, meterIn: 232709, km: 71, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725872800004, dept: 'SALE', date: '2026-09-09', timeOut: '10:18', timeIn: '10:41', place: 'PSO', purpose: 'Oil', meterOut: 65074, meterIn: 65079, km: 5, driver: 'Masood', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725872800005, dept: 'ADMIN', date: '2026-09-09', timeOut: '10:18', timeIn: '10:41', place: 'PSO', purpose: 'Oil', meterOut: 15333, meterIn: 15338, km: 5, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725872800006, dept: 'LOADING', date: '2026-09-09', timeOut: '13:00', timeIn: '16:00', place: 'Adda Plot', purpose: 'Maal Lene PBS', meterOut: 27297, meterIn: 27299, km: 2, driver: 'saeed', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725872800007, dept: 'LOADING', date: '2026-09-09', timeOut: '12:30', timeIn: '21:12', place: 'Lahore', purpose: 'Maal Chhorne', meterOut: 186638, meterIn: 186742, km: 104, driver: 'Zubair', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725872800008, dept: 'SALE', date: '2026-09-09', timeOut: '16:05', timeIn: '17:15', place: 'Akbari Mandi', purpose: 'Staff Drop', meterOut: 65079, meterIn: 65109, km: 30, driver: 'Masood', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: '' },
+      { id: 1725872800009, dept: 'ADMIN', date: '2026-09-09', timeOut: '17:10', timeIn: '18:38', place: 'Akbari Mandi', purpose: 'Staff Drop', meterOut: 15338, meterIn: 15379, km: 41, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: '' },
+      { id: 1725872800010, dept: 'LOADING', date: '2026-09-09', timeOut: '17:53', timeIn: '', place: 'Lahore', purpose: 'Staff Drop', meterOut: 40246, meterIn: 40346, km: 100, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725872800011, dept: 'LOADING', date: '2026-09-09', timeOut: '18:00', timeIn: '20:10', place: 'Township Sabzazar', purpose: 'Delivery', meterOut: 232709, meterIn: 232714, km: 5, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      
+      { id: 1725959200001, dept: 'ADMIN', date: '2026-09-10', timeOut: '06:40', timeIn: '', place: 'Adda Plot', purpose: 'Pick Staff', meterOut: 15379, meterIn: 15446, km: 67, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: '' },
+      { id: 1725959200002, dept: 'LOADING', date: '2026-09-10', timeOut: '09:30', timeIn: '14:30', place: 'Saggian', purpose: 'Booking Board', meterOut: 232714, meterIn: 232792, km: 78, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725959200003, dept: 'LOADING', date: '2026-09-10', timeOut: '10:47', timeIn: '', place: 'PSO', purpose: 'Oil', meterOut: 186743, meterIn: 186748, km: 5, driver: 'Ashfaq', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Sajjad' },
+      { id: 1725959200004, dept: 'SALE', date: '2026-09-10', timeOut: '12:00', timeIn: '14:10', place: 'Raiwind', purpose: 'Pick Staff', meterOut: 65152, meterIn: 65205, km: 53, driver: 'Ashfaq', vehicle: 'ART-542 - Vehicle', model: 'Vehicle', remark: 'Check by Azam' },
+      { id: 1725959200005, dept: 'SALE', date: '2026-09-10', timeOut: '12:05', timeIn: '', place: 'Lahore', purpose: 'Sale Ka Maal', meterOut: 67074, meterIn: 67116, km: 42, driver: 'Masood', vehicle: 'ARQ-965 - Vehicle', model: 'Vehicle', remark: 'Check by Azam' },
+      { id: 1725959200006, dept: 'LOADING', date: '2026-09-10', timeOut: '12:25', timeIn: '18:05', place: 'Lahore', purpose: 'Market', meterOut: 186748, meterIn: 186821, km: 73, driver: 'saeed', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725959200007, dept: 'SALE', date: '2026-09-10', timeOut: '12:15', timeIn: '23:00', place: 'Lahore', purpose: 'Supply', meterOut: 65108, meterIn: 65211, km: 103, driver: 'Zubair', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725959200008, dept: 'LOADING', date: '2026-09-10', timeOut: '13:21', timeIn: '15:47', place: 'Kasur', purpose: 'Delivery', meterOut: 64243, meterIn: 64319, km: 76, driver: 'Qasim', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept09_10_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 07-08 2026) ──────────────────
+  (function seedSept07_08_2026() {
+    if (localStorage.getItem('vfp_seeded_sept07_08_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1725700000001, dept: 'SALE', date: '2026-09-07', timeOut: '13:30', timeIn: '17:35', place: 'Bahria Coca Cola Road', purpose: 'Drop Tahir sb', meterOut: 41876, meterIn: 41968, km: 92, driver: 'Usama', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725700000002, dept: 'ADMIN', date: '2026-09-07', timeOut: '17:01', timeIn: '18:00', place: 'Adda Plot', purpose: 'Drop Goods', meterOut: 15014, meterIn: 15054, km: 40, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      
+      { id: 1725786400001, dept: 'ADMIN', date: '2026-09-08', timeOut: '06:45', timeIn: '08:45', place: 'Ichra Plaza', purpose: 'Pick Staff', meterOut: 15054, meterIn: 15121, km: 67, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: '' },
+      { id: 1725786400002, dept: 'ADMIN', date: '2026-09-08', timeOut: '07:25', timeIn: '09:00', place: 'Lahore', purpose: 'Pick Tahir sb', meterOut: 167650, meterIn: 167716, km: 66, driver: 'Ashfaq', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1725786400003, dept: 'SALE', date: '2026-09-08', timeOut: '09:31', timeIn: '10:26', place: 'Tibb City', purpose: 'Booking Board', meterOut: 64888, meterIn: 65074, km: 186, driver: 'Asad Saleem', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725786400004, dept: 'ADMIN', date: '2026-09-08', timeOut: '10:50', timeIn: '19:10', place: 'Lhr Kot Abdul Malik + Muridke', purpose: 'Ali Imran + Nasir Shahab', meterOut: 15121, meterIn: 15215, km: 94, driver: 'Usama', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725786400005, dept: 'LOADING', date: '2026-09-08', timeOut: '11:03', timeIn: '14:00', place: 'Lahore Kalma Chowk', purpose: 'Sales Officer', meterOut: 64225, meterIn: 64243, km: 18, driver: 'Masood', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' },
+      { id: 1725786400006, dept: 'LOADING', date: '2026-09-08', timeOut: '11:40', timeIn: '19:00', place: 'Lahore', purpose: 'Market', meterOut: 186466, meterIn: 186598, km: 132, driver: 'saeed', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725786400007, dept: 'LOADING', date: '2026-09-08', timeOut: '12:15', timeIn: '17:50', place: 'Nizamabad Sundar', purpose: 'Pick Goods', meterOut: 27237, meterIn: 27292, km: 55, driver: 'Zubair', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725786400008, dept: 'LOADING', date: '2026-09-08', timeOut: '12:00', timeIn: '12:18', place: 'PSO', purpose: 'Oil', meterOut: 40139, meterIn: 40144, km: 5, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725786400009, dept: 'LOADING', date: '2026-09-08', timeOut: '12:23', timeIn: '14:11', place: 'Bhatta Chowk Lace', purpose: 'Adda Maal', meterOut: 232540, meterIn: 232618, km: 78, driver: 'Zubair', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725786400010, dept: 'SALE', date: '2026-09-08', timeOut: '13:36', timeIn: '15:36', place: 'Saggian', purpose: 'With Tahir sb', meterOut: 41968, meterIn: 41985, km: 17, driver: 'Ashfaq', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725786400011, dept: 'LOADING', date: '2026-09-08', timeOut: '14:18', timeIn: '15:50', place: 'Wapda Town', purpose: 'Pick Goods', meterOut: 232618, meterIn: 232632, km: 14, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Sajjad' },
+      { id: 1725786400012, dept: 'ADMIN', date: '2026-09-08', timeOut: '14:30', timeIn: '15:30', place: 'Defense', purpose: 'Pick Goods', meterOut: 215570, meterIn: 215580, km: 10, driver: 'Zubair', vehicle: 'LE-3153 - Vitz', model: 'Vitz', remark: 'Check by Azam' },
+      { id: 1725786400013, dept: 'ADMIN', date: '2026-09-08', timeOut: '17:18', timeIn: '18:40', place: 'Adda Plot', purpose: 'Drop Staff', meterOut: 15215, meterIn: 15262, km: 47, driver: 'Usama', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725786400014, dept: 'LOADING', date: '2026-09-08', timeOut: '18:00', timeIn: '09:56', place: 'Lahore', purpose: 'Drop Staff', meterOut: 40144, meterIn: 40246, km: 102, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725786400015, dept: 'ADMIN', date: '2026-09-08', timeOut: '18:20', timeIn: '20:45', place: 'Lahore', purpose: 'Drop Ramzan Supply', meterOut: 167716, meterIn: 167791, km: 75, driver: 'Ashfaq', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1725786400016, dept: 'ADMIN', date: '2026-09-08', timeOut: '21:50', timeIn: '23:40', place: 'Sundar Industrial Estate', purpose: 'Drop Akbar sb', meterOut: 167791, meterIn: 167841, km: 50, driver: 'Ashfaq', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: '' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept07_08_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 05-07 2026) ──────────────────
+  (function seedSept05_07_2026() {
+    if (localStorage.getItem('vfp_seeded_sept05_07_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1725500000001, dept: 'LOADING', date: '2026-09-05', timeOut: '11:55', timeIn: '12:15', place: 'Sundar', purpose: 'Getting Plants', meterOut: 64171, meterIn: 64184, km: 13, driver: 'Masood', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: '' },
+      { id: 1725500000002, dept: 'ADMIN', date: '2026-09-05', timeOut: '12:10', timeIn: '20:10', place: 'XPO Center', purpose: 'Delivering Goods', meterOut: 85424, meterIn: 85501, km: 77, driver: 'Ashfaq', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Azam' },
+      { id: 1725500000003, dept: 'ADMIN', date: '2026-09-05', timeOut: '16:00', timeIn: '22:30', place: 'Lahore', purpose: 'Local', meterOut: 167640, meterIn: 167673, km: 33, driver: 'Raheel', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: '' },
+      { id: 1725500000004, dept: 'ADMIN', date: '2026-09-05', timeOut: '17:10', timeIn: '18:10', place: 'Ichra Plaza', purpose: 'Admin Staff Drop', meterOut: 14843, meterIn: 14881, km: 38, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: '' },
+      { id: 1725500000005, dept: 'ADMIN', date: '2026-09-05', timeOut: '18:23', timeIn: '23:00', place: 'Lahore', purpose: 'Drop', meterOut: 14881, meterIn: 14944, km: 63, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725500000006, dept: 'LOADING', date: '2026-09-05', timeOut: '16:30', timeIn: '10:00', place: 'Lahore', purpose: 'Staff Drop', meterOut: 39862, meterIn: 40035, km: 173, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      
+      { id: 1725586400001, dept: 'LOADING', date: '2026-09-06', timeOut: '15:50', timeIn: '16:15', place: 'Tire Shop', purpose: 'Air Filling', meterOut: 64184, meterIn: 64201, km: 17, driver: 'Ashfaq', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' },
+      
+      { id: 1725672800001, dept: 'ADMIN', date: '2026-09-07', timeOut: '06:30', timeIn: '07:25', place: 'Niaz Baig', purpose: 'Raiwind Gosht Lene', meterOut: 85501, meterIn: 85515, km: 14, driver: 'Ashfaq', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: '' },
+      { id: 1725672800002, dept: 'ADMIN', date: '2026-09-07', timeOut: '06:45', timeIn: '08:55', place: 'Ali Town', purpose: 'Staff Pick', meterOut: 14944, meterIn: 15009, km: 65, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: '' },
+      { id: 1725672800003, dept: 'ADMIN', date: '2026-09-07', timeOut: '10:00', timeIn: '10:30', place: 'PSO', purpose: 'Oil', meterOut: 94880, meterIn: 94885, km: 5, driver: 'Ashfaq', vehicle: 'ARX-361 - Vehicle', model: 'Vehicle', remark: 'Check by Azam' },
+      { id: 1725672800004, dept: 'LOADING', date: '2026-09-07', timeOut: '10:00', timeIn: '10:32', place: 'PSO', purpose: 'Oil', meterOut: 186336, meterIn: 186341, km: 5, driver: 'Zubair', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725672800005, dept: 'ADMIN', date: '2026-09-07', timeOut: '10:00', timeIn: '10:35', place: 'PSO', purpose: 'Oil', meterOut: 15009, meterIn: 15014, km: 5, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725672800006, dept: 'SALE', date: '2026-09-07', timeOut: '10:00', timeIn: '10:40', place: 'PSO', purpose: 'Oil', meterOut: 64883, meterIn: 64888, km: 5, driver: 'Usama', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725672800007, dept: 'LOADING', date: '2026-09-07', timeOut: '10:00', timeIn: '10:45', place: 'PSO', purpose: 'Oil', meterOut: 27169, meterIn: 27174, km: 5, driver: 'saeed', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725672800008, dept: 'LOADING', date: '2026-09-07', timeOut: '10:05', timeIn: '10:50', place: 'PSO', purpose: 'Oil', meterOut: 64201, meterIn: 64206, km: 5, driver: 'Masood', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' },
+      { id: 1725672800009, dept: 'SALE', date: '2026-09-07', timeOut: '10:00', timeIn: '10:52', place: 'PSO', purpose: 'Oil', meterOut: 41871, meterIn: 41876, km: 5, driver: 'Usama', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725672800010, dept: 'LOADING', date: '2026-09-07', timeOut: '10:30', timeIn: '15:15', place: 'Defense Road', purpose: 'Goods Pick', meterOut: 27174, meterIn: 27237, km: 63, driver: 'Zubair', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725672800011, dept: 'LOADING', date: '2026-09-07', timeOut: '11:00', timeIn: '16:00', place: 'Towards City', purpose: 'Delivery', meterOut: 232464, meterIn: 232541, km: 77, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725672800012, dept: 'LOADING', date: '2026-09-07', timeOut: '11:35', timeIn: '07:15', place: 'Lahore', purpose: 'Goods Delivery', meterOut: 186341, meterIn: 186466, km: 125, driver: 'saeed', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725672800013, dept: 'LOADING', date: '2026-09-07', timeOut: '12:00', timeIn: '13:00', place: 'Raiwind', purpose: 'Bringing Post', meterOut: 64206, meterIn: 64225, km: 19, driver: 'Masood', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: '' },
+      { id: 1725672800014, dept: 'LOADING', date: '2026-09-07', timeOut: '17:00', timeIn: '', place: 'Lahore', purpose: 'Staff Drop', meterOut: 40035, meterIn: 40129, km: 94, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: '' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept05_07_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 04-05 2026) ──────────────────
+  (function seedSept0405_2026() {
+    if (localStorage.getItem('vfp_seeded_sept0405_2026_v1')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1725408000001, dept: 'ADMIN', date: '2026-09-04', timeOut: '11:50', timeIn: '', place: 'PSO', purpose: 'Oil', meterOut: 14634, meterIn: 14639, km: 5, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725408000002, dept: 'LOADING', date: '2026-09-04', timeOut: '12:00', timeIn: '21:34', place: 'Lahore', purpose: 'Market', meterOut: 186086, meterIn: 186201, km: 115, driver: 'Zubair', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725408000003, dept: 'ADMIN', date: '2026-09-04', timeOut: '14:24', timeIn: '18:05', place: 'XPO Center', purpose: 'Executive Drop', meterOut: 14639, meterIn: 14708, km: 69, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725408000004, dept: 'ADMIN', date: '2026-09-04', timeOut: '13:50', timeIn: '18:00', place: 'XPO Center', purpose: 'Executive Officer', meterOut: 167545, meterIn: 167604, km: 59, driver: 'Usama', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1725408000005, dept: 'LOADING', date: '2026-09-04', timeOut: '14:00', timeIn: '', place: 'Model Town', purpose: 'Drop Goods', meterOut: 27110, meterIn: 27161, km: 51, driver: 'Ashfaq', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725408000006, dept: 'ADMIN', date: '2026-09-04', timeOut: '17:00', timeIn: '17:40', place: 'Raiwind', purpose: 'Staff Drop', meterOut: 25406, meterIn: 25420, km: 14, driver: 'Ashfaq', vehicle: 'AFS-612 - Bolan', model: 'Bolan', remark: 'Check by Azam' },
+      { id: 1725408000007, dept: 'LOADING', date: '2026-09-04', timeOut: '17:30', timeIn: '20:18', place: 'Kasur', purpose: 'Goods Delivery', meterOut: 232342, meterIn: 232388, km: 46, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725408000008, dept: 'SALE', date: '2026-09-04', timeOut: '18:00', timeIn: '19:40', place: 'XPO', purpose: 'Pick up Staff', meterOut: 41738, meterIn: 41798, km: 60, driver: 'Usama', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725408000009, dept: 'LOADING', date: '2026-09-04', timeOut: '18:27', timeIn: '09:50', place: 'Lahore', purpose: 'Staff Drop', meterOut: 39769, meterIn: 39862, km: 93, driver: 'Bilal Manzoor', vehicle: 'AVX-481 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725494400001, dept: 'ADMIN', date: '2026-09-05', timeOut: '01:50', timeIn: '09:00', place: 'Ali Town', purpose: 'Staff Pick', meterOut: 14708, meterIn: 14775, km: 67, driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: '' },
+      { id: 1725494400002, dept: 'SALE', date: '2026-09-05', timeOut: '08:31', timeIn: '11:05', place: 'XPO + Central Model Lahore', purpose: '', meterOut: 64785, meterIn: 64883, km: 98, driver: 'Ashfaq', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725494400003, dept: 'ADMIN', date: '2026-09-05', timeOut: '09:00', timeIn: '11:40', place: 'Lahore', purpose: 'XPO', meterOut: 14775, meterIn: 14843, km: 68, driver: 'Usama', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725494400004, dept: 'LOADING', date: '2026-09-05', timeOut: '09:00', timeIn: '10:25', place: 'Model Town', purpose: 'Washing', meterOut: 64162, meterIn: 64171, km: 9, driver: 'Zubair', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' },
+      { id: 1725494400005, dept: 'SALE', date: '2026-09-05', timeOut: '09:25', timeIn: '19:45', place: 'Lahore', purpose: 'XPO', meterOut: 41798, meterIn: 41871, km: 73, driver: 'Asad', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725494400006, dept: 'LOADING', date: '2026-09-05', timeOut: '09:36', timeIn: '13:10', place: 'Sundar', purpose: 'Booking', meterOut: 232388, meterIn: 232464, km: 76, driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725494400007, dept: 'ADMIN', date: '2026-09-05', timeOut: '09:50', timeIn: '10:00', place: 'PSO', purpose: 'Oil', meterOut: 167603, meterIn: 167608, km: 5, driver: 'Masood', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1725494400008, dept: 'ADMIN', date: '2026-09-05', timeOut: '09:50', timeIn: '10:00', place: 'PSO', purpose: 'Oil', meterOut: 94378, meterIn: 94381, km: 3, driver: 'Zubair', vehicle: 'ARX-361 - Vehicle', model: 'Vehicle', remark: 'Check by Azam' },
+      { id: 1725494400009, dept: 'ADMIN', date: '2026-09-05', timeOut: '10:15', timeIn: '11:00', place: 'Ali Town', purpose: 'Doctor Building', meterOut: 167609, meterIn: 167640, km: 31, driver: 'Masood', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1725494400010, dept: 'LOADING', date: '2026-09-05', timeOut: '11:40', timeIn: '19:00', place: 'Lahore', purpose: 'Local', meterOut: 186201, meterIn: 186336, km: 135, driver: 'saeed', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: '' },
+      { id: 1725494400011, dept: 'LOADING', date: '2026-09-05', timeOut: '11:45', timeIn: '13:10', place: 'Sundar SO1', purpose: 'Production', meterOut: 27161, meterIn: 27169, km: 8, driver: 'Zubair', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: '' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept0405_2026_v1', '1');
+  })();
+
+  // ── One-time seed: handwritten log entries (Sept 03 2026) ──────────────────
+  (function seedSept032026() {
+    if (localStorage.getItem('vfp_seeded_sept032026_v2')) return;
+    var existing = load();
+    var newEntries = [
+      { id: 1725321600001, dept: 'SALE', date: '2026-09-03', timeOut: '09:40', timeIn: '15:35', place: 'CCL L.A', purpose: 'Sale / Officer', meterOut: 41537, meterIn: 41669, km: parseFloat((41669-41537).toFixed(1)), driver: 'Umer Hayat', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725321600002, dept: 'LOADING', date: '2026-09-03', timeOut: '10:15', timeIn: '11:00', place: 'Saggian', purpose: 'Fix Load', meterOut: 232166, meterIn: 232248, km: parseFloat((232248-232166).toFixed(1)), driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725321600003, dept: 'LOADING', date: '2026-09-03', timeOut: '10:29', timeIn: '10:50', place: 'PSO', purpose: 'Oil', meterOut: 185941, meterIn: 185945, km: parseFloat((185945-185941).toFixed(1)), driver: 'Tanveer Abbas', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725321600004, dept: 'ADMIN', date: '2026-09-03', timeOut: '10:22', timeIn: '10:50', place: 'PSO', purpose: 'Oil', meterOut: 167477, meterIn: 167492, km: parseFloat((167492-167477).toFixed(1)), driver: 'Zubair', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1725321600005, dept: 'LOADING', date: '2026-09-03', timeOut: '11:30', timeIn: '14:10', place: 'Defense', purpose: 'Sale', meterOut: 64081, meterIn: 64106, km: parseFloat((64106-64081).toFixed(1)), driver: 'Masood', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' },
+      { id: 1725321600006, dept: 'LOADING', date: '2026-09-03', timeOut: '12:00', timeIn: '20:00', place: 'Lahore', purpose: 'Delivery / Saman', meterOut: 185945, meterIn: 186076, km: parseFloat((186076-185945).toFixed(1)), driver: 'Masood', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725321600007, dept: 'ADMIN', date: '2026-09-03', timeOut: '13:23', timeIn: '16:40', place: 'PSO', purpose: 'Return', meterOut: 167484, meterIn: 167545, km: parseFloat((167545-167484).toFixed(1)), driver: 'Tanveer Abbas', vehicle: 'LEB-5449 - Yaris', model: 'Yaris', remark: 'Check by Azam' },
+      { id: 1725321600008, dept: 'LOADING', date: '2026-09-03', timeOut: '15:15', timeIn: '18:40', place: 'PSO', purpose: 'Oil', meterOut: 232248, meterIn: 232256, km: parseFloat((232256-232248).toFixed(1)), driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725321600009, dept: 'LOADING', date: '2026-09-03', timeOut: '15:15', timeIn: '18:30', place: 'Multan Road + PSO', purpose: 'Brought evening goods', meterOut: 27033, meterIn: 27110, km: parseFloat((27110-27033).toFixed(1)), driver: 'Usama', vehicle: 'CAV-8213 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725321600010, dept: 'ADMIN', date: '2026-09-03', timeOut: '12:58', timeIn: '21:30', place: 'Gujjar Pura + Gulberg', purpose: 'Staff + Delivery', meterOut: 324513, meterIn: 324632, km: parseFloat((324632-324513).toFixed(1)), driver: 'Bilal Manzoor', vehicle: 'LEA-6860 - Toyota GLI', model: 'Toyota GLI', remark: 'Check by Azam' },
+      { id: 1725321600011, dept: 'ADMIN', date: '2026-09-03', timeOut: '19:00', timeIn: '18:56', place: 'Auto Market', purpose: 'Staff drop', meterOut: 14522, meterIn: 14600, km: parseFloat((14600-14522).toFixed(1)), driver: 'Usama', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725321600012, dept: 'LOADING', date: '2026-09-03', timeOut: '18:42', timeIn: '', place: 'Lahore', purpose: 'Staff drop', meterOut: 39668, meterIn: 39769, km: parseFloat((39769-39668).toFixed(1)), driver: 'Usama', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725321600013, dept: 'ADMIN', date: '2026-09-03', timeOut: '08:35', timeIn: '12:50', place: 'Lahore', purpose: 'Staff drop', meterOut: 14600, meterIn: 14634, km: parseFloat((14634-14600).toFixed(1)), driver: 'Masood', vehicle: 'BPR-980 - Caravan', model: 'Caravan', remark: 'Check by Azam' },
+      { id: 1725321600014, dept: 'LOADING', date: '2026-09-03', timeOut: '09:00', timeIn: '11:00', place: 'XPO + Central Lahore', purpose: 'Get goods', meterOut: 232252, meterIn: 232342, km: parseFloat((232342-232252).toFixed(1)), driver: 'Tanveer Abbas', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725321600015, dept: 'SALE', date: '2026-09-03', timeOut: '09:50', timeIn: '', place: 'Sundar Industrial Estate', purpose: 'Staff', meterOut: 41669, meterIn: 41733, km: parseFloat((41733-41669).toFixed(1)), driver: 'Ashfaq', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725321600016, dept: 'LOADING', date: '2026-09-03', timeOut: '10:20', timeIn: '18:26', place: 'Workshop', purpose: 'Washing', meterOut: 186076, meterIn: 186086, km: parseFloat((186086-186076).toFixed(1)), driver: 'Zubair', vehicle: 'CAF-4893 - Porter', model: 'Porter', remark: 'Check by Azam' },
+      { id: 1725321600017, dept: 'LOADING', date: '2026-09-03', timeOut: '10:48', timeIn: '20:25', place: 'Central Lahore XPO', purpose: 'Sales Officer', meterOut: 64106, meterIn: 64162, km: parseFloat((64162-64106).toFixed(1)), driver: 'Masood', vehicle: 'CAJ-6701 - Ravi', model: 'Ravi', remark: 'Check by Azam' },
+      { id: 1725321600018, dept: 'SALE', date: '2026-09-03', timeOut: '11:20', timeIn: '11:30', place: 'PSO', purpose: 'Oil', meterOut: 64674, meterIn: 64785, km: parseFloat((64785-64674).toFixed(1)), driver: 'Masood', vehicle: 'ARQ-334 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' },
+      { id: 1725321600019, dept: 'LOADING', date: '2026-09-03', timeOut: '11:21', timeIn: '11:31', place: 'PSO', purpose: 'Oil', meterOut: 39769, meterIn: 39773, km: parseFloat((39773-39769).toFixed(1)), driver: 'Asad', vehicle: 'LES-4605 - Hino', model: 'Hino', remark: 'Check by Azam' },
+      { id: 1725321600020, dept: 'SALE', date: '2026-09-03', timeOut: '', timeIn: '', place: '', purpose: '', meterOut: 41733, meterIn: 41738, km: parseFloat((41738-41733).toFixed(1)), driver: 'Qasim', vehicle: 'ARQ-526 - Wagon-R', model: 'Wagon-R', remark: 'Check by Azam' }
+    ];
+    var existingIds = existing.map(function(e){ return e.id; });
+    newEntries.forEach(function(ne){
+      if (existingIds.indexOf(ne.id) === -1) existing.push(ne);
+    });
+    save(existing);
+    localStorage.setItem('vfp_seeded_sept032026_v2', '1');
+    renderTable();
+    updateStats();
+  })();
+  // ─────────────────────────────────────────────────────────────────────────
+
+
+  // ── Date Report ──────────────────────────────────────────────────
+  function showDateReport() {
+    setAllNavInactive();
+    document.getElementById('nav-date-report').classList.add('active');
+    document.getElementById('date-report-card').style.display = 'block';
+    document.getElementById('monthly-report-card').style.display = 'none';
+    document.getElementById('today-summary-card').style.display = 'none';
+    document.getElementById('main-entry-form-card').style.display = 'none';
+    document.getElementById('fleet-registry-card').style.display = 'none';
+    document.getElementById('log-table').closest('.card').style.display = 'none';
+    // Set today's date by default
+    var todayISO = new Date().toISOString().split('T')[0];
+    var inp = document.getElementById('date-search-input');
+    if (!inp.value) inp.value = todayISO;
+    renderDateReport();
+  }
+
+  function renderDateReport() {
+    var inp = document.getElementById('date-search-input');
+    var selDate = inp.value;
+    if (!selDate) return;
+    var data = load().filter(function(e){ return e.date === selDate; });
+    var label = document.getElementById('date-report-result-label');
+    var body = document.getElementById('date-report-body');
+    var parts = selDate.split('-');
+    var dateStr = parts[2]+'/'+parts[1]+'/'+parts[0];
+    label.textContent = dateStr+' ko '+data.length+' entries, '+data.reduce(function(s,e){return s+(e.km||0);},0).toFixed(1)+' km total';
+    if (data.length === 0) {
+      body.innerHTML = '<p style="padding:18px;color:#64748b;text-align:center;">Is date mein koi entry nahi mili.</p>';
+      return;
+    }
+    body.innerHTML = buildMiniTable(data);
+  }
+
+  // ── Monthly Report ─────────────────────────────────────────────
+  function showMonthlyReport() {
+    setAllNavInactive();
+    document.getElementById('nav-monthly-report').classList.add('active');
+    document.getElementById('monthly-report-card').style.display = 'block';
+    document.getElementById('date-report-card').style.display = 'none';
+    document.getElementById('today-summary-card').style.display = 'none';
+    document.getElementById('main-entry-form-card').style.display = 'none';
+    document.getElementById('fleet-registry-card').style.display = 'none';
+    document.getElementById('log-table').closest('.card').style.display = 'none';
+    // Auto select current month
+    var now = new Date();
+    var ym = now.getFullYear()+'-'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1);
+    var sel = document.getElementById('month-select');
+    if (!sel.value) sel.value = ym;
+    renderMonthReport();
+  }
+
+  function renderMonthReport() {
+    var ym = document.getElementById('month-select').value;
+    var dept = document.getElementById('month-dept-filter').value;
+    var body = document.getElementById('month-report-body');
+    var lbl = document.getElementById('month-report-label');
+    if (!ym) { body.innerHTML = ''; lbl.textContent = ''; return; }
+    var data = load().filter(function(e){
+      if (!e.date) return false;
+      var match = e.date.indexOf(ym) === 0;
+      if (dept !== 'ALL') match = match && e.dept === dept;
+      return match;
+    });
+    lbl.textContent = data.length+' entries, '+data.reduce(function(s,e){return s+(e.km||0);},0).toFixed(1)+' km total';
+    if (data.length === 0) {
+      body.innerHTML = '<p style="padding:18px;color:#64748b;text-align:center;">Is month mein koi entry nahi mili.</p>';
+      return;
+    }
+    // Group by date
+    var byDate = {};
+    data.forEach(function(e){
+      if (!byDate[e.date]) byDate[e.date] = [];
+      byDate[e.date].push(e);
+    });
+    var dates = Object.keys(byDate).sort();
+    var html = '';
+    dates.forEach(function(d){
+      var parts = d.split('-');
+      var dStr = parts[2]+'/'+parts[1]+'/'+parts[0];
+      var dayData = byDate[d];
+      var dayKm = dayData.reduce(function(s,e){return s+(e.km||0);},0);
+      html += '<div style="margin-bottom:16px;">';
+      html += '<div style="background:#1e3a5f;color:#fff;padding:8px 14px;border-radius:6px 6px 0 0;display:flex;justify-content:space-between;align-items:center;">';
+      html += '<span style="font-weight:700;">&#x1F4C5; '+dStr+'</span>';
+      html += '<span style="background:#fbbf24;color:#1e3a5f;border-radius:12px;padding:2px 12px;font-weight:700;font-size:0.82rem;">'+dayData.length+' entries &bull; '+dayKm.toFixed(1)+' km</span>';
+      html += '</div>';
+      html += buildMiniTable(dayData, true);
+      html += '</div>';
+    });
+    body.innerHTML = html;
+  }
+
+  // ── Shared mini-table builder ──────────────────────────────────
+  function buildMiniTable(data, noDate) {
+    var html = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.82rem;">';
+    html += '<thead><tr style="background:#f1f5f9;">';
+    if (!noDate) html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Date</th>';
+    html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Time</th>';
+    html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Dept</th>';
+    html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Place</th>';
+    html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Purpose</th>';
+    html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Driver</th>';
+    html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Vehicle</th>';
+    html += '<th style="padding:7px 10px;text-align:right;border-bottom:1.5px solid #e2e8f0;">KM</th>';
+    html += '<th style="padding:7px 10px;text-align:left;border-bottom:1.5px solid #e2e8f0;">Remarks</th>';
+    html += '</tr></thead><tbody>';
+    data.forEach(function(e, idx) {
+      var bg = idx%2===0?'#fff':'#f8fafc';
+      var vNum = (e.vehicle||'').split(' - ')[0] || (e.vehicle||'');
+      var deptBadge = e.dept==='SALE'?'#0ea5e9':e.dept==='LOADING'?'#f97316':'#8b5cf6';
+      var timeStr = (e.timeOut||'--')+' → '+(e.timeIn||'--');
+      var parts = (e.date||'').split('-');
+      var dStr = parts.length===3?parts[2]+'/'+parts[1]+'/'+parts[0]:'';
+      html += '<tr style="background:'+bg+';">';
+      if (!noDate) html += '<td style="padding:7px 10px;white-space:nowrap;">'+dStr+'</td>';
+      html += '<td style="padding:7px 10px;white-space:nowrap;color:#475569;">'+timeStr+'</td>';
+      html += '<td style="padding:7px 10px;"><span style="background:'+deptBadge+';color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem;font-weight:700;">'+e.dept+'</span></td>';
+      html += '<td style="padding:7px 10px;font-weight:600;">'+(e.place||'--')+'</td>';
+      html += '<td style="padding:7px 10px;color:#475569;">'+(e.purpose||'--')+'</td>';
+      html += '<td style="padding:7px 10px;">&#x1F464; '+(e.driver||'--')+'</td>';
+      html += '<td style="padding:7px 10px;"><span style="background:#dbeafe;color:#1e3a5f;padding:2px 8px;border-radius:10px;font-weight:700;font-size:0.78rem;">'+vNum+'</span></td>';
+      html += '<td style="padding:7px 10px;text-align:right;font-weight:700;color:#1e3a5f;">'+(e.km||0)+' km</td>';
+      html += '<td style="padding:7px 10px;color:#64748b;font-size:0.78rem;">'+(e.remark||'--')+'</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+    return html;
+  }
+
+  // ── Today Dashboard ───────────────────────────────────────────
+  function renderTodaySummary() {
+    var todayISO = new Date().toISOString().split('T')[0];
+    var parts = todayISO.split('-');
+    var todayStr = parts[2]+'/'+parts[1]+'/'+parts[0];
+    var todayLabel = document.getElementById('today-date-label');
+    if (todayLabel) todayLabel.textContent = '('+todayStr+')';
+
+    var data = load().filter(function(e){ return e.date === todayISO; });
+    var countBadge = document.getElementById('today-count-badge');
+    var kmBadge = document.getElementById('today-km-badge');
+    var body = document.getElementById('today-entries-body');
+    if (!body) return;
+
+    var totalKm = data.reduce(function(s,e){ return s+(e.km||0); }, 0);
+    if (countBadge) countBadge.textContent = data.length+' entries';
+    if (kmBadge) kmBadge.textContent = totalKm.toFixed(1)+' km';
+
+    if (data.length === 0) {
+      body.innerHTML = '<p style="padding:18px;color:#64748b;text-align:center;">Aaj (' + todayStr + ') abhi tak koi entry nahi hai.</p>';
+    } else {
+      body.innerHTML = buildMiniTable(data, true);
+    }
+  }
+
+  // ── Helper: set all sidebar nav inactive ──────────────────────
+  function setAllNavInactive() {
+    var items = document.querySelectorAll('.nav-item');
+    items.forEach(function(el){ el.classList.remove('active'); });
+  }
+
+  renderTable();
+  updateStats();
+  populateDriverDropdown();
+  renderFleetRegistryTable();
+  updateVehicleSelectDropdown();
+  renderTodaySummary();
+  // Mark "All Drivers" active on load
+  var _initDA = document.getElementById('nav-driver-all');
+  if (_initDA) _initDA.classList.add('active');
+
+</script>
+</body>
+</html>
